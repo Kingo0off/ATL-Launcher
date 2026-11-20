@@ -195,7 +195,8 @@ fn handle(st: &Shared, mut request: Request) {
             let mut buf = vec![0u8; 1 << 20];
             let reader = request.as_reader();
             while left > 0 {
-                let n = reader.read(&mut buf[..(left.min(buf.len() as u64)) as usize])?;
+                let want = left.min(buf.len() as u64) as usize;
+                let n = reader.read(&mut buf[..want])?;
                 if n == 0 {
                     return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "Загрузка прервана"));
                 }
