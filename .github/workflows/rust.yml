@@ -30,15 +30,17 @@ jobs:
       - name: Журнал в ветку ci-logs (чтобы разработчик мог его прочитать)
         if: always()
         run: |
+          set +e
           {
             echo "commit: $GITHUB_SHA"
             echo "job status: ${{ job.status }}"
-            echo "=== тесты ==="; grep -v "^\s*\(Compiling\|Downloaded\|Downloading\)" "$RUNNER_TEMP/test.log" 2>/dev/null | tail -n 300
+            echo "=== тесты ==="; touch "$RUNNER_TEMP/test.log" "$RUNNER_TEMP/build.log"; grep -v "^\s*\(Compiling\|Downloaded\|Downloading\)" "$RUNNER_TEMP/test.log" 2>/dev/null | tail -n 400
             echo "=== сборка ==="; grep -v "^\s*\(Compiling\|Downloaded\|Downloading\)" "$RUNNER_TEMP/build.log" 2>/dev/null | tail -n 300
           } > "$RUNNER_TEMP/ci-log.txt"
           cp Cargo.lock "$RUNNER_TEMP/Cargo.lock" 2>/dev/null || true
           git config user.name "github-actions"
           git config user.email "actions@github.com"
+          set -e
           git checkout --orphan ci-logs
           git rm -rf . -q
           cp "$RUNNER_TEMP/ci-log.txt" ci-log.txt
