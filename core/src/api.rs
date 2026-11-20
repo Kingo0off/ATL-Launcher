@@ -59,6 +59,29 @@ impl RunTask {
     }
 }
 
+/// Состояние входа через Microsoft (идёт в отдельном потоке).
+pub struct MsFlow {
+    state: Mutex<String>,
+    code: Mutex<String>,
+    url: Mutex<String>,
+    error: Mutex<String>,
+    cancel: AtomicBool,
+}
+
+impl MsFlow {
+    fn get(m: &Mutex<String>) -> String {
+        m.lock().map(|g| g.clone()).unwrap_or_default()
+    }
+    fn set(m: &Mutex<String>, v: &str) {
+        if let Ok(mut g) = m.lock() {
+            *g = v.to_string();
+        }
+    }
+    fn public(&self) -> Value {
+        json!({"state": Self::get(&self.state), "code": Self::get(&self.code), "url": Self::get(&self.url), "error": Self::get(&self.error)})
+    }
+}
+
 #[derive(Default)]
 pub struct RunState {
     tasks: Mutex<HashMap<String, Arc<RunTask>>>,
@@ -115,7 +138,7 @@ fn run_worker(dir: PathBuf, run: Arc<RunState>, task: Arc<RunTask>, key: String,
         let mut cmd = {
             let _g = run.prep.lock();
             let mut spec = spec;
-            spec.account = crate::launch::ensure_fresh(&dir, &spec.account)?;
+            spec.account = crate::auth::ensure_fresh(&dir, &spec.ep, &spec.account, &spec.ms_client_id)?;
             crate::launch::prepare_game(&spec, &progress, &log)?
         };
         run.clear_progress(&tag);
@@ -199,7 +222,8 @@ struct Ref {
 pub struct Api {
     pub dir: PathBuf,
     pub store: Store,
-    settings: Mutex<Map<String, Value>>,
+    settings: Arc<Mutex<Map<String, Value>>>,
+    ms_flow: Mutex<Option<Arc<MsFlow>>>,
     pub endpoints: Endpoints,
     cache: Mutex<HashMap<String, (Instant, Value)>>,
     run: Arc<RunState>,
@@ -209,7 +233,7 @@ impl Api {
     pub fn new(dir: PathBuf) -> Api {
         let s = settings::load(&dir);
         let _ = std::fs::create_dir_all(dir.join("tmp"));
-        Api { store: Store::new(dir.clone()), dir, settings: Mutex::new(s), endpoints: Endpoints::default(), cache: Mutex::new(HashMap::new()), run: Arc::new(RunState::default()) }
+        Api { store: Store::new(dir.clone()), dir, settings: Arc::new(Mutex::new(s)), ms_flow: Mutex::new(None), endpoints: Endpoints::default(), cache: Mutex::new(HashMap::new()), run: Arc::new(RunState::default()) }
     }
 
     pub fn tmp_dir(&self) -> PathBuf {
@@ -296,6 +320,84 @@ impl Api {
         accs.iter().find(|a| a["uuid"].as_str() == Some(sel.as_str())).or_else(|| accs.first()).cloned()
     }
 
+    fn select_account(&self, uuid: &str) {
+        if let Ok(mut s) = self.settings.lock() {
+            s.insert("last_account".into(), json!(uuid));
+            let _ = settings::save(&self.dir, &s);
+        }
+    }
+
+    fn ms_client_id(&self) -> String {
+        self.settings.lock().ok().and_then(|s| s.get("ms_client_id").and_then(|v| v.as_str().map(|x| x.trim().to_string()))).unwrap_or_default()
+    }
+
+    /// Аккаунт Microsoft с свежим токеном (для смены скина).
+    fn ms_account(&self, uuid: &str) -> Result<Value, ApiError> {
+        let acc = accounts::load(&self.dir)
+            .into_iter()
+            .find(|a| a["uuid"] == uuid && a["type"] == "ms")
+            .ok_or("Скины можно менять только у аккаунта Microsoft. Войди через Microsoft в меню аккаунта.")?;
+        Ok(crate::auth::ensure_fresh(&self.dir, &self.endpoints, &acc, &self.ms_client_id())?)
+    }
+
+    fn ms_start(&self, mode: &str) -> ApiResult {
+        let cid = self.ms_client_id();
+        if cid.is_empty() {
+            return Err("Не задан Client ID приложения Microsoft. Вставь его в Настройках, раздел «Вход через Microsoft».".into());
+        }
+        let flow = Arc::new(MsFlow {
+            state: Mutex::new("starting".into()),
+            code: Mutex::new(String::new()),
+            url: Mutex::new(String::new()),
+            error: Mutex::new(String::new()),
+            cancel: AtomicBool::new(false),
+        });
+        {
+            let mut g = self.ms_flow.lock().map_err(|_| "внутренняя ошибка")?;
+            if let Some(old) = g.as_ref() {
+                if matches!(MsFlow::get(&old.state).as_str(), "starting" | "waiting") {
+                    old.cancel.store(true, Ordering::Relaxed);
+                }
+            }
+            *g = Some(flow.clone());
+        }
+        let (dir, ep, settings, f, code_mode) = (self.dir.clone(), self.endpoints.clone(), self.settings.clone(), flow.clone(), mode == "code");
+        std::thread::spawn(move || {
+            let res = if code_mode {
+                crate::auth::ms_device_flow(&dir, &ep, &cid, &|code, url| {
+                    MsFlow::set(&f.code, code);
+                    MsFlow::set(&f.url, url);
+                    MsFlow::set(&f.state, "waiting");
+                }, &f.cancel)
+            } else {
+                crate::auth::ms_browser_flow(&dir, &ep, &cid, &|url| {
+                    MsFlow::set(&f.url, url);
+                    MsFlow::set(&f.state, "waiting");
+                }, &f.cancel, Duration::from_secs(300))
+            };
+            match res {
+                Ok(acc) => {
+                    if let Ok(mut s) = settings.lock() {
+                        s.insert("last_account".into(), acc["uuid"].clone());
+                        let _ = settings::save(&dir, &s);
+                    }
+                    MsFlow::set(&f.state, "done");
+                }
+                Err(e) => {
+                    MsFlow::set(&f.error, &e);
+                    MsFlow::set(&f.state, "error");
+                }
+            }
+        });
+        for _ in 0..80 {
+            if MsFlow::get(&flow.state) != "starting" {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(250));
+        }
+        Ok(flow.public())
+    }
+
     fn play(&self, key: &str) -> ApiResult {
         let r = self.local_ref(key)?;
         let task = {
@@ -323,6 +425,7 @@ impl Api {
             user_java: s.get("java_path").and_then(|v| v.as_str()).unwrap_or("").to_string(),
             ram_mb: ram,
             java_args: r.inst["java_args"].as_str().unwrap_or("").to_string(),
+            ms_client_id: s.get("ms_client_id").and_then(|v| v.as_str()).unwrap_or("").trim().to_string(),
         };
         let (dir, run, k, name) = (self.dir.clone(), self.run.clone(), key.to_string(), r.name.clone());
         std::thread::spawn(move || run_worker(dir, run, task, k, name, spec));
@@ -363,7 +466,23 @@ impl Api {
                     None => Out::Missing,
                 })
             }
-            "skinimg" | "skinurl" => Ok(Out::Missing),
+            "skinimg" => Ok(match crate::skins::read(&self.dir, popt(p, "id")) {
+                Some(b) => Out::Image(b, "image/png"),
+                None => Out::Missing,
+            }),
+            "skinurl" => {
+                // Текущий скин аккаунта через лаунчер, чтобы страница не ходила на чужие сайты.
+                let png = (|| -> Option<Vec<u8>> {
+                    let acc = self.ms_account(p["uuid"].as_str()?).ok()?;
+                    let prof = crate::skins::profile(&self.endpoints, &acc).ok()?;
+                    let url = prof["skin_url"].as_str().filter(|u| !u.is_empty())?;
+                    crate::skins::fetch_texture(url).ok()
+                })();
+                Ok(match png {
+                    Some(b) => Out::Image(b, "image/png"),
+                    None => Out::Missing,
+                })
+            }
             _ => self.call(name, p).map(Out::Json),
         }
     }
@@ -446,6 +565,75 @@ impl Api {
                 accounts::remove(&self.dir, pstr(p, "uuid")?, popt(p, "type")).map_err(|e| e.to_string())?;
                 Ok(json!({}))
             }
+            "accounts.ely_login" => {
+                let acc = crate::auth::ely_login(&self.endpoints, popt(p, "username").trim(), popt(p, "password"), popt(p, "totp").trim())?;
+                crate::auth::upsert_account(&self.dir, &acc);
+                self.select_account(acc["uuid"].as_str().unwrap_or(""));
+                Ok(json!({"name": acc["name"]}))
+            }
+            "accounts.ms_start" => self.ms_start(popt(p, "mode")),
+            "accounts.ms_status" => Ok(self
+                .ms_flow
+                .lock()
+                .ok()
+                .and_then(|f| f.as_ref().map(|f| f.public()))
+                .unwrap_or_else(|| json!({"state": "none", "code": "", "url": "", "error": ""}))),
+            "accounts.ms_cancel" => {
+                if let Some(f) = self.ms_flow.lock().ok().and_then(|f| f.clone()) {
+                    f.cancel.store(true, Ordering::Relaxed);
+                }
+                Ok(json!({}))
+            }
+            "skins.list" => Ok(json!({"skins": crate::skins::list(&self.dir)})),
+            "skins.profile" => {
+                let acc = self.ms_account(pstr(p, "uuid")?)?;
+                Ok(crate::skins::profile(&self.endpoints, &acc)?)
+            }
+            "skins.apply" => {
+                let acc = self.ms_account(pstr(p, "uuid")?)?;
+                let it = crate::skins::get(&self.dir, pstr(p, "id")?)?;
+                let variant = if popt(p, "variant").is_empty() { it["variant"].as_str().unwrap_or("classic") } else { popt(p, "variant") };
+                if Some(variant) != it["variant"].as_str() {
+                    crate::skins::update(&self.dir, pstr(p, "id")?, None, Some(variant))?;
+                }
+                let data = crate::skins::read(&self.dir, pstr(p, "id")?).unwrap_or_default();
+                crate::skins::apply(&self.endpoints, &acc, &data, variant)?;
+                Ok(crate::skins::profile(&self.endpoints, &acc)?)
+            }
+            "skins.reset" => {
+                let acc = self.ms_account(pstr(p, "uuid")?)?;
+                crate::skins::reset(&self.endpoints, &acc)?;
+                Ok(crate::skins::profile(&self.endpoints, &acc)?)
+            }
+            "skins.cape" => {
+                let acc = self.ms_account(pstr(p, "uuid")?)?;
+                crate::skins::set_cape(&self.endpoints, &acc, popt(p, "cape_id"))?;
+                Ok(crate::skins::profile(&self.endpoints, &acc)?)
+            }
+            "skins.import_current" => {
+                let acc = self.ms_account(pstr(p, "uuid")?)?;
+                let prof = crate::skins::profile(&self.endpoints, &acc)?;
+                let url = prof["skin_url"].as_str().unwrap_or("");
+                if url.is_empty() {
+                    return Err("У аккаунта стандартный скин, сохранять нечего".into());
+                }
+                let data = crate::skins::fetch_texture(url)?;
+                let item = crate::skins::add(&self.dir, &format!("Мой скин {}", prof["name"].as_str().unwrap_or("")), &data, prof["variant"].as_str().unwrap_or("classic"))?;
+                Ok(json!({"skin": item}))
+            }
+            "skins.lookup" => {
+                let (data, variant, name) = crate::skins::lookup(&self.endpoints, popt(p, "nick"))?;
+                Ok(json!({"skin": crate::skins::add(&self.dir, &format!("Скин {}", name), &data, &variant)?}))
+            }
+            "skins.update" => {
+                let name = p["name"].as_str();
+                let variant = p["variant"].as_str();
+                Ok(json!({"skin": crate::skins::update(&self.dir, pstr(p, "id")?, name, variant)?}))
+            }
+            "skins.delete" => {
+                crate::skins::remove(&self.dir, pstr(p, "id")?)?;
+                Ok(json!({}))
+            }
             "instances.create" => self.instances_create(p),
             "instances.update" => self.instances_update(p),
             "instances.delete" => {
@@ -491,7 +679,8 @@ impl Api {
                     "https://www.curseforge.com/",
                     "https://console.curseforge.com/",
                 ];
-                if !OK.iter().any(|pre| url.starts_with(pre)) {
+                let flow_url = self.ms_flow.lock().ok().and_then(|f| f.as_ref().map(|f| MsFlow::get(&f.url))).unwrap_or_default();
+                if !(url == flow_url && !flow_url.is_empty()) && !OK.iter().any(|pre| url.starts_with(pre)) {
                     return Err("Этот адрес открывать нельзя".into());
                 }
                 open_url(url);
@@ -643,7 +832,16 @@ impl Api {
                 mods::add_content_file(&r.gdir, folder, &name, tmp)?;
                 Ok(json!({"name": name}))
             }
-            "import" | "skin" => Err("Эта загрузка появится на одном из следующих этапов переноса на Rust.".into()),
+            "skin" => {
+                if !lower.ends_with(".png") {
+                    return Err("Нужен файл скина в формате .png".into());
+                }
+                let data = std::fs::read(tmp).map_err(|e| e.to_string())?;
+                let stem = Path::new(&name).file_stem().and_then(|n| n.to_str()).unwrap_or("Скин");
+                let variant = if popt(q, "variant").is_empty() { "classic" } else { popt(q, "variant") };
+                Ok(json!({"skin": crate::skins::add(&self.dir, stem, &data, variant)?}))
+            }
+            "import" => Err("Импорт сборок появится на одном из следующих этапов переноса на Rust.".into()),
             _ => Err("Неизвестный тип загрузки".into()),
         }
     }

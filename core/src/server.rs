@@ -98,7 +98,7 @@ pub fn percent_decode(s: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-fn parse_query(q: &str) -> Value {
+pub fn parse_query(q: &str) -> Value {
     let mut m = serde_json::Map::new();
     for pair in q.split('&').filter(|p| !p.is_empty()) {
         let (k, v) = pair.split_once('=').unwrap_or((pair, ""));

@@ -36,6 +36,13 @@ pub struct Endpoints {
     pub authlib: String,
     pub forge_maven: String,
     pub neoforge_maven: String,
+    pub ms_base: String,
+    pub xbl: String,
+    pub xsts: String,
+    pub mc_api: String,
+    pub ely_auth: String,
+    pub mojang_api: String,
+    pub session_api: String,
 }
 
 impl Default for Endpoints {
@@ -51,6 +58,13 @@ impl Default for Endpoints {
             authlib: "https://authlib-injector.yushi.moe/artifact/latest.json".into(),
             forge_maven: "https://maven.minecraftforge.net/net/minecraftforge/forge".into(),
             neoforge_maven: "https://maven.neoforged.net/releases/net/neoforged/neoforge".into(),
+            ms_base: "https://login.microsoftonline.com/consumers/oauth2/v2.0".into(),
+            xbl: "https://user.auth.xboxlive.com/user/authenticate".into(),
+            xsts: "https://xsts.auth.xboxlive.com/xsts/authorize".into(),
+            mc_api: "https://api.minecraftservices.com".into(),
+            ely_auth: "https://authserver.ely.by".into(),
+            mojang_api: "https://api.mojang.com".into(),
+            session_api: "https://sessionserver.mojang.com".into(),
         }
     }
 }
@@ -281,4 +295,36 @@ pub fn download_many(tasks: &[Task], progress: Progress, label: &str, workers: u
         Ok(Some(e)) => Err(e),
         _ => Ok(()),
     }
+}
+
+/// Загрузка PNG-файла формой multipart (для смены скина). Возвращает (код, JSON).
+pub fn http_multipart(url: &str, fields: &[(&str, &str)], file_field: &str, filename: &str, data: &[u8], headers: &[(&str, &str)]) -> Result<(u16, Value), NetError> {
+    let boundary = format!("----fl{:016x}{:016x}", rand::random::<u64>(), rand::random::<u64>());
+    let mut body: Vec<u8> = Vec::new();
+    for (k, v) in fields {
+        body.extend_from_slice(format!("--{}\r\nContent-Disposition: form-data; name=\"{}\"\r\n\r\n{}\r\n", boundary, k, v).as_bytes());
+    }
+    body.extend_from_slice(
+        format!("--{}\r\nContent-Disposition: form-data; name=\"{}\"; filename=\"{}\"\r\nContent-Type: image/png\r\n\r\n", boundary, file_field, filename).as_bytes(),
+    );
+    body.extend_from_slice(data);
+    body.extend_from_slice(format!("\r\n--{}--\r\n", boundary).as_bytes());
+    let mut req = agent().post(url).set("Accept", "application/json").set("Content-Type", &format!("multipart/form-data; boundary={}", boundary));
+    for (k, v) in headers {
+        req = req.set(k, v);
+    }
+    let resp = match req.send_bytes(&body) {
+        Ok(r) => r,
+        Err(ureq::Error::Status(_, r)) => r,
+        Err(ureq::Error::Transport(t)) => return Err(transport_err(url, t)),
+    };
+    let status = resp.status();
+    let raw = read_all(resp, 1 << 20)?;
+    let js = serde_json::from_slice(&raw).unwrap_or_else(|_| json!({}));
+    Ok((status, js))
+}
+
+/// Скачивает файл целиком в память (с ограничением размера).
+pub fn get_bytes(url: &str, limit: u64) -> Result<Vec<u8>, NetError> {
+    read_all(fetch(url)?, limit)
 }

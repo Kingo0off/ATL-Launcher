@@ -362,6 +362,7 @@ pub struct RunSpec {
     pub user_java: String,
     pub ram_mb: i64,
     pub java_args: String,
+    pub ms_client_id: String,
 }
 
 /// Готовит всё и возвращает Command, готовую к запуску (stdout и stderr уже перехвачены).
@@ -421,49 +422,4 @@ pub fn prepare_game(spec: &RunSpec, progress: Progress, log: Log) -> Result<Comm
     cmd.args(&pre).args(&jvm).arg(main).args(&game).current_dir(&spec.game_dir).stdout(Stdio::piped()).stderr(Stdio::piped());
     log(&format!("Запуск игры под ником {}…", acc["name"].as_str().unwrap_or("")));
     Ok(cmd)
-}
-
-// ---------- проверка аккаунта ----------
-
-pub const ELY_AUTH: &str = "https://authserver.ely.by";
-
-fn upsert_account(root: &Path, acc: &Value) {
-    let mut list: Vec<Value> = crate::accounts::load(root)
-        .into_iter()
-        .filter(|a| !(a["type"] == acc["type"] && a["uuid"] == acc["uuid"]))
-        .collect();
-    list.push(acc.clone());
-    let _ = crate::accounts::save(root, &list);
-}
-
-/// Освежает токен перед запуском. Ely.by: проверка и refresh. Microsoft: пока только проверка срока.
-pub fn ensure_fresh(root: &Path, acc: &Value) -> Result<Value, String> {
-    if acc["type"] == "ely" {
-        let (st, _) = crate::net::http_json(&format!("{}/auth/validate", ELY_AUTH), Some(&json!({"accessToken": acc["access_token"]})), None, &[], None).map_err(ne)?;
-        if st == 200 {
-            return Ok(acc.clone());
-        }
-        let (st, js) = crate::net::http_json(
-            &format!("{}/auth/refresh", ELY_AUTH),
-            Some(&json!({"accessToken": acc["access_token"], "clientToken": acc["client_token"]})),
-            None,
-            &[],
-            None,
-        )
-        .map_err(ne)?;
-        if st != 200 {
-            let why = js["errorMessage"].as_str().or(js["error"].as_str()).unwrap_or("неизвестная ошибка");
-            return Err(format!("Сессия Ely.by истекла, войди заново ({})", why));
-        }
-        let mut a = acc.clone();
-        a["access_token"] = js["accessToken"].clone();
-        upsert_account(root, &a);
-        return Ok(a);
-    }
-    let exp = acc["expires_at"].as_f64().unwrap_or(0.0);
-    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0);
-    if exp > now + 120.0 {
-        return Ok(acc.clone());
-    }
-    Err("Вход Microsoft устарел. Обновление входа появится на следующем этапе — пока войди через Microsoft заново.".into())
 }

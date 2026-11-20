@@ -129,6 +129,7 @@ fn prepare_game_fabric_and_ely() {
         user_java: exe.to_string_lossy().to_string(),
         ram_mb: 2048,
         java_args: "-Dextra=\"a b\"".into(),
+        ms_client_id: String::new(),
     };
     let logs = Mutex::new(Vec::<String>::new());
     let cmd = launch::prepare_game(&spec, &no_progress, &|s| logs.lock().unwrap().push(s.to_string())).unwrap();
@@ -147,7 +148,7 @@ fn ensure_fresh_microsoft_expiry() {
     let root = tmp("fresh");
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
     let good = json!({"type":"ms","name":"A","uuid":"1","access_token":"t","expires_at":now + 3600.0});
-    assert_eq!(launch::ensure_fresh(&root, &good).unwrap(), good);
+    assert_eq!(friendlauncher_core::auth::ensure_fresh(&root, &Endpoints::default(), &good, "").unwrap(), good);
     let old: Value = json!({"type":"ms","name":"A","uuid":"1","access_token":"t","expires_at":1.0});
-    assert!(launch::ensure_fresh(&root, &old).is_err());
+    assert!(friendlauncher_core::auth::ensure_fresh(&root, &Endpoints::default(), &old, "").is_err());
 }

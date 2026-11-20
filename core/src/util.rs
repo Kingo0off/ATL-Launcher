@@ -123,3 +123,16 @@ pub fn safe_join(base: &Path, rel: &str) -> Result<PathBuf, String> {
     }
     Ok(out)
 }
+
+/// Кодирует строку для адреса (application/x-www-form-urlencoded).
+pub fn urlencode(s: &str) -> String {
+    let mut out = String::new();
+    for b in s.bytes() {
+        if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) {
+            out.push(b as char);
+        } else {
+            out.push_str(&format!("%{:02X}", b));
+        }
+    }
+    out
+}
