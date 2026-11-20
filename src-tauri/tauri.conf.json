@@ -1,0 +1,19 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "FriendLauncher",
+  "version": "3.0.0",
+  "identifier": "app.friendlauncher.launcher",
+  "build": {
+    "frontendDist": "../launcher/web"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "icon": ["icons/icon.ico"]
+  }
+}
