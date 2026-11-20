@@ -59,10 +59,11 @@ fn pump_collects_output_and_code() {
 #[test]
 fn java_runtime_download() {
     let java = b"fake java".to_vec();
-    let manifest = json!({"files":{
-        "bin":{"type":"directory"},
-        if cfg!(windows) {"bin/java.exe"} else {"bin/java"}:{"type":"file","executable":true,"downloads":{"raw":{"url":"@@/java","sha1":sha(&java),"size":java.len()}}}
-    }});
+    let exe_name = if cfg!(windows) { "bin/java.exe" } else { "bin/java" };
+    let mut files = serde_json::Map::new();
+    files.insert("bin".into(), json!({"type":"directory"}));
+    files.insert(exe_name.into(), json!({"type":"file","executable":true,"downloads":{"raw":{"url":"@@/java","sha1":sha(&java),"size":java.len()}}}));
+    let manifest = json!({ "files": files });
     let mut f: HashMap<String, Vec<u8>> = HashMap::new();
     f.insert("/java".into(), java);
     let base = mock(f.clone());
@@ -70,7 +71,9 @@ fn java_runtime_download() {
     let mf = manifest.to_string().replace("@@", &base);
     f.insert("/mf.json".into(), mf.clone().into_bytes());
     let base2 = mock(f.clone());
-    let all = json!({ launch::runtime_platform(): {"jre-test": [{"manifest":{"sha1":sha(mf.as_bytes()),"url":format!("{}/mf.json",base2)}}]}});
+    let mut all = serde_json::Map::new();
+    all.insert(launch::runtime_platform().into(), json!({"jre-test": [{"manifest":{"sha1":sha(mf.as_bytes()),"url":format!("{}/mf.json",base2)}}]}));
+    let all = Value::Object(all);
     f.insert("/all.json".into(), all.to_string().into_bytes());
     let base3 = mock(f);
     let ep = Endpoints { java_all: format!("{}/all.json", base3), ..Endpoints::default() };
