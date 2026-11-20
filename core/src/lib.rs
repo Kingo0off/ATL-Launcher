@@ -2,7 +2,10 @@
 pub mod accounts;
 pub mod api;
 pub mod instances;
+pub mod loaders;
+pub mod mojang;
 pub mod mods;
+pub mod net;
 pub mod paths;
 pub mod server;
 pub mod settings;

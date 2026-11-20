@@ -1,9 +1,12 @@
 use crate::instances::{count_files, load_track, loader_label, Store, LOADERS};
 use crate::util::{open_path, open_url, read_json, valid_id};
-use crate::{accounts, mods, paths, settings, shots, worlds, APP_VERSION};
+use crate::net::Endpoints;
+use crate::{accounts, loaders, mods, mojang, paths, settings, shots, worlds, APP_VERSION};
 use serde_json::{json, Map, Value};
 use std::path::{Path, PathBuf};
+use std::collections::HashMap;
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 /// Ошибка, которую интерфейс покажет пользователю (HTTP 400).
 #[derive(Debug)]
@@ -59,13 +62,15 @@ pub struct Api {
     pub dir: PathBuf,
     pub store: Store,
     settings: Mutex<Map<String, Value>>,
+    pub endpoints: Endpoints,
+    cache: Mutex<HashMap<String, (Instant, Value)>>,
 }
 
 impl Api {
     pub fn new(dir: PathBuf) -> Api {
         let s = settings::load(&dir);
         let _ = std::fs::create_dir_all(dir.join("tmp"));
-        Api { store: Store::new(dir.clone()), dir, settings: Mutex::new(s) }
+        Api { store: Store::new(dir.clone()), dir, settings: Mutex::new(s), endpoints: Endpoints::default(), cache: Mutex::new(HashMap::new()) }
     }
 
     pub fn tmp_dir(&self) -> PathBuf {
@@ -130,6 +135,22 @@ impl Api {
         }
     }
 
+    /// Кэш ответов сети на 10 минут.
+    fn cached(&self, key: &str, fetch: impl FnOnce() -> ApiResult) -> ApiResult {
+        if let Ok(c) = self.cache.lock() {
+            if let Some((t, v)) = c.get(key) {
+                if t.elapsed() < Duration::from_secs(600) {
+                    return Ok(v.clone());
+                }
+            }
+        }
+        let v = fetch()?;
+        if let Ok(mut c) = self.cache.lock() {
+            c.insert(key.to_string(), (Instant::now(), v.clone()));
+        }
+        Ok(v)
+    }
+
     fn clean_loader(v: &Value) -> Result<Value, ApiError> {
         let kind = v.get("type").and_then(|x| x.as_str()).unwrap_or("vanilla");
         if !LOADERS.contains(&kind) {
@@ -182,6 +203,20 @@ impl Api {
             "ping" | "bye" => Ok(json!({"ok": true})),
             "poll" => Ok(json!({"tasks": {}, "progress": {}, "notice": 0, "notices": []})),
             "settings.set" => self.settings_set(p),
+            "meta.mc_versions" => {
+                let snap = p["snapshots"].as_bool().unwrap_or(false);
+                self.cached(&format!("mc:{}", snap), || {
+                    let v = mojang::mc_versions(&self.endpoints, snap).map_err(|e| e.0)?;
+                    Ok(json!({"versions": v}))
+                })
+            }
+            "meta.loader_versions" => {
+                let (kind, mc) = (pstr(p, "kind")?, pstr(p, "mc")?);
+                self.cached(&format!("lv:{}:{}", kind, mc), || {
+                    let v = loaders::loader_versions(&self.endpoints, kind, mc).map_err(|e| e.0)?;
+                    Ok(json!({"versions": v}))
+                })
+            }
             "accounts.select" => {
                 let mut s = self.settings.lock().map_err(|_| "внутренняя ошибка")?;
                 s.insert("last_account".into(), json!(pstr(p, "uuid")?));

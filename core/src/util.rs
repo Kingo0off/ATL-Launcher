@@ -111,3 +111,15 @@ pub fn open_url(url: &str) {
         let _ = std::process::Command::new("xdg-open").arg(url).spawn();
     }
 }
+
+/// Склеивает путь и не даёт выйти за пределы base (защита от «../» в манифестах).
+pub fn safe_join(base: &Path, rel: &str) -> Result<PathBuf, String> {
+    let mut out = base.to_path_buf();
+    for seg in rel.replace('\\', "/").split('/') {
+        if seg.is_empty() || seg == "." || seg == ".." || seg.contains(':') || seg.contains('\0') {
+            return Err(format!("Недопустимый путь в манифесте: {}", rel));
+        }
+        out.push(seg);
+    }
+    Ok(out)
+}
