@@ -45,6 +45,7 @@ fn popt<'a>(p: &'a Value, k: &str) -> &'a str {
     p.get(k).and_then(|v| v.as_str()).unwrap_or("")
 }
 
+#[allow(dead_code)]
 struct Ref {
     id: String,
     gdir: PathBuf,

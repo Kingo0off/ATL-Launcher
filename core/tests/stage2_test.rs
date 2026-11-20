@@ -93,7 +93,7 @@ fn mods_list_toggle_delete() {
     make_jar(
         &mdir.join("Fabulous.jar"),
         &[
-            ("fabric.mod.json", br#"{"id":"fab","name":"Fabulous Mod","version":"1.2.3","description":"Тест\nмногострочно","icon":{"16":"a.png","128":"icon.png"}}"#),
+            ("fabric.mod.json", "{\"id\":\"fab\",\"name\":\"Fabulous Mod\",\"version\":\"1.2.3\",\"description\":\"Тест\nмногострочно\",\"icon\":{\"16\":\"a.png\",\"128\":\"icon.png\"}}".as_bytes()),
             ("icon.png", b"PNGDATA"),
         ],
     );
