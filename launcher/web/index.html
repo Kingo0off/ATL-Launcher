@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FriendLauncher</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3l12 7v12l-12 7L4 22V10z' fill='%239b7cff'/%3E%3Cpath d='M16 3l12 7-12 7L4 10z' fill='%23d4c7ff'/%3E%3Cpath d='M16 17v12L4 22V10z' fill='%235b3fd6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="gprog" class="gprog" hidden><i></i></div>
+<div id="app">
+  <nav class="rail" id="rail" aria-label="Разделы"></nav>
+  <main class="main" id="main"><div id="offline" class="offline" hidden>Нет связи с лаунчером. Запусти его снова.</div><div id="view"></div></main>
+</div>
+<div id="statuspill" class="statuspill" hidden></div>
+<div id="modal-root"></div>
+<div id="pop-root"></div>
+<div id="toasts" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>
