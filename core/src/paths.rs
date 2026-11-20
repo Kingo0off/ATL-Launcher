@@ -21,7 +21,7 @@ pub fn data_dir() -> PathBuf {
     base
 }
 
-fn home() -> PathBuf {
+pub fn home() -> PathBuf {
     std::env::var("USERPROFILE")
         .or_else(|_| std::env::var("HOME"))
         .map(PathBuf::from)

@@ -1,10 +1,10 @@
 //! Локальный HTTP-сервер: отдаёт интерфейс и принимает запросы /<токен>/api/<метод>.
 //! Защита как в Python-версии: секретный токен в адресе, проверка Host, CSP.
-use crate::api::{Api, ApiError, GET_OK};
+use crate::api::{Api, ApiError, Out, GET_OK, MAX_UPLOAD};
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use serde_json::{json, Value};
-use std::io::Read;
+use std::io::{Read, Write};
 use std::sync::Arc;
 use tiny_http::{Header, Method, Request, Response, Server};
 
@@ -168,7 +168,48 @@ fn handle(st: &Shared, mut request: Request) {
         } else {
             parse_query(query)
         };
-        return match st.api.call(name, &params) {
+        return match st.api.call_out(name, &params) {
+            Ok(Out::Json(v)) => send_json(request, 200, v),
+            Ok(Out::Image(bytes, ctype)) => send(request, 200, bytes, ctype, &[]),
+            Ok(Out::Missing) => send(request, 404, Vec::new(), "text/plain", &[]),
+            Err(ApiError(msg)) => send_json(request, 400, json!({"error": msg})),
+        };
+    }
+
+    if let Some(kind) = rest.strip_prefix("upload/") {
+        if !is_post {
+            return send_json(request, 405, json!({"error": "method not allowed"}));
+        }
+        let limit = match MAX_UPLOAD.iter().find(|(k, _)| *k == kind) {
+            Some((_, l)) => *l,
+            None => return send_json(request, 404, json!({"error": "unknown upload"})),
+        };
+        let len = request.body_length().unwrap_or(0) as u64;
+        if len == 0 || len > limit {
+            return send_json(request, 413, json!({"error": "Файл пустой или слишком большой"}));
+        }
+        let tmp = st.api.tmp_dir().join(format!("{:016x}.upload", rand::random::<u64>()));
+        let saved = (|| -> std::io::Result<()> {
+            let mut f = std::fs::File::create(&tmp)?;
+            let mut left = len;
+            let mut buf = vec![0u8; 1 << 20];
+            let reader = request.as_reader();
+            while left > 0 {
+                let n = reader.read(&mut buf[..(left.min(buf.len() as u64)) as usize])?;
+                if n == 0 {
+                    return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "Загрузка прервана"));
+                }
+                f.write_all(&buf[..n])?;
+                left -= n as u64;
+            }
+            Ok(())
+        })();
+        let result = match saved {
+            Ok(()) => st.api.upload(kind, &parse_query(query), &tmp),
+            Err(e) => Err(ApiError(format!("Не удалось принять файл: {}", e))),
+        };
+        let _ = std::fs::remove_file(&tmp);
+        return match result {
             Ok(v) => send_json(request, 200, v),
             Err(ApiError(msg)) => send_json(request, 400, json!({"error": msg})),
         };
