@@ -7,6 +7,7 @@ use tauri::{WebviewUrl, WebviewWindowBuilder};
 
 fn main() {
     let api = Arc::new(Api::new(paths::data_dir()));
+    let api_keep = Arc::clone(&api);
     let running = match server::start(api) {
         Ok(r) => r,
         Err(e) => {
@@ -25,6 +26,21 @@ fn main() {
                 .build()?;
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("не удалось запустить окно");
+        .build(tauri::generate_context!())
+        .expect("не удалось создать окно")
+        .run(move |app, event| {
+            // Пока идёт игра, лаунчер не закрываем: иначе потеряется её журнал.
+            if let tauri::RunEvent::ExitRequested { api, code, .. } = event {
+                if code.is_none() && api_keep.any_running() {
+                    api.prevent_exit();
+                    let (handle, a) = (app.clone(), Arc::clone(&api_keep));
+                    std::thread::spawn(move || {
+                        while a.any_running() {
+                            std::thread::sleep(std::time::Duration::from_secs(2));
+                        }
+                        handle.exit(0);
+                    });
+                }
+            }
+        });
 }

@@ -4,9 +4,147 @@ use crate::net::Endpoints;
 use crate::{accounts, loaders, mods, mojang, paths, settings, shots, worlds, APP_VERSION};
 use serde_json::{json, Map, Value};
 use std::path::{Path, PathBuf};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
+
+/// Запущенная (или готовящаяся) игра и её журнал.
+pub struct RunTask {
+    phase: Mutex<String>,
+    error: Mutex<String>,
+    code: Mutex<Option<i32>>,
+    started: f64,
+    lines: Mutex<(usize, VecDeque<String>)>,
+    stop: AtomicBool,
+}
+
+impl RunTask {
+    fn new() -> RunTask {
+        RunTask {
+            phase: Mutex::new("preparing".into()),
+            error: Mutex::new(String::new()),
+            code: Mutex::new(None),
+            started: now_secs(),
+            lines: Mutex::new((0, VecDeque::new())),
+            stop: AtomicBool::new(false),
+        }
+    }
+    fn add(&self, text: &str) {
+        if let Ok(mut g) = self.lines.lock() {
+            if g.1.len() >= 4000 {
+                g.1.pop_front();
+                g.0 += 1;
+            }
+            g.1.push_back(text.to_string());
+        }
+    }
+    fn read(&self, since: usize) -> (Vec<String>, usize) {
+        match self.lines.lock() {
+            Ok(g) => {
+                let start = since.max(g.0);
+                (g.1.iter().skip(start - g.0).cloned().collect(), g.0 + g.1.len())
+            }
+            Err(_) => (Vec::new(), since),
+        }
+    }
+    fn phase(&self) -> String {
+        self.phase.lock().map(|p| p.clone()).unwrap_or_default()
+    }
+    fn set_phase(&self, p: &str) {
+        if let Ok(mut g) = self.phase.lock() {
+            *g = p.to_string();
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct RunState {
+    tasks: Mutex<HashMap<String, Arc<RunTask>>>,
+    progress: Mutex<Map<String, Value>>,
+    notices: Mutex<(u64, Vec<Value>)>,
+    prep: Mutex<()>,
+    stats: Mutex<()>,
+}
+
+impl RunState {
+    fn notice(&self, kind: &str, text: &str) {
+        if let Ok(mut g) = self.notices.lock() {
+            g.0 += 1;
+            let id = g.0;
+            g.1.push(json!({"id": id, "kind": kind, "text": text}));
+            let n = g.1.len();
+            if n > 30 {
+                g.1.drain(..n - 30);
+            }
+        }
+    }
+    fn set_progress(&self, tag: &str, done: usize, total: usize, label: &str) {
+        if let Ok(mut g) = self.progress.lock() {
+            g.insert(tag.to_string(), json!({"label": label, "done": done, "total": total}));
+        }
+    }
+    fn clear_progress(&self, tag: &str) {
+        if let Ok(mut g) = self.progress.lock() {
+            g.remove(tag);
+        }
+    }
+}
+
+fn now_secs() -> f64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0)
+}
+
+fn record_play(dir: &Path, run: &RunState, key: &str, started: f64, seconds: f64) {
+    let _g = run.stats.lock();
+    let mut st = read_json(&dir.join("stats.json")).unwrap_or_else(|| json!({}));
+    if !st.is_object() {
+        st = json!({});
+    }
+    let prev = st[key]["playtime_s"].as_i64().unwrap_or(0);
+    st[key] = json!({"last_played": started as i64, "playtime_s": prev + seconds as i64});
+    let _ = crate::util::write_json(&dir.join("stats.json"), &st);
+}
+
+fn run_worker(dir: PathBuf, run: Arc<RunState>, task: Arc<RunTask>, key: String, name: String, spec: crate::launch::RunSpec) {
+    let tag = key.clone();
+    let log = |s: &str| task.add(s);
+    let progress = |d: usize, t: usize, l: &str| run.set_progress(&tag, d, t, l);
+    let result = (|| -> Result<(), String> {
+        let mut cmd = {
+            let _g = run.prep.lock();
+            let mut spec = spec;
+            spec.account = crate::launch::ensure_fresh(&dir, &spec.account)?;
+            crate::launch::prepare_game(&spec, &progress, &log)?
+        };
+        run.clear_progress(&tag);
+        let mut child = cmd.spawn().map_err(|e| format!("Не удалось запустить Java: {}", e))?;
+        task.set_phase("running");
+        let started = now_secs();
+        let code = crate::launch::pump(&mut child, &|l| task.add(&l), &task.stop);
+        if let Ok(mut c) = task.code.lock() {
+            *c = Some(code);
+        }
+        let stopped = task.stop.load(Ordering::Relaxed);
+        let ok = stopped || code == 0 || code == 143 || code == -15;
+        task.set_phase(if ok { "exited" } else { "crashed" });
+        record_play(&dir, &run, &key, started, now_secs() - started);
+        if !ok {
+            run.notice("error", &format!("«{}» завершилась с ошибкой (код {}). Подробности в журнале сборки.", name, code));
+        }
+        Ok(())
+    })();
+    if let Err(e) = result {
+        run.clear_progress(&tag);
+        task.set_phase("error");
+        if let Ok(mut g) = task.error.lock() {
+            *g = e.clone();
+        }
+        task.add(&format!("ОШИБКА: {}", e));
+        run.notice("error", &e);
+    }
+}
 
 /// Ошибка, которую интерфейс покажет пользователю (HTTP 400).
 #[derive(Debug)]
@@ -64,13 +202,14 @@ pub struct Api {
     settings: Mutex<Map<String, Value>>,
     pub endpoints: Endpoints,
     cache: Mutex<HashMap<String, (Instant, Value)>>,
+    run: Arc<RunState>,
 }
 
 impl Api {
     pub fn new(dir: PathBuf) -> Api {
         let s = settings::load(&dir);
         let _ = std::fs::create_dir_all(dir.join("tmp"));
-        Api { store: Store::new(dir.clone()), dir, settings: Mutex::new(s), endpoints: Endpoints::default(), cache: Mutex::new(HashMap::new()) }
+        Api { store: Store::new(dir.clone()), dir, settings: Mutex::new(s), endpoints: Endpoints::default(), cache: Mutex::new(HashMap::new()), run: Arc::new(RunState::default()) }
     }
 
     pub fn tmp_dir(&self) -> PathBuf {
@@ -106,7 +245,7 @@ impl Api {
             "java_args": inst["java_args"].as_str().unwrap_or(""), "notes": inst["notes"].as_str().unwrap_or(""),
             "last_played": st["last_played"].as_i64().unwrap_or(0), "playtime_s": st["playtime_s"].as_i64().unwrap_or(0),
             "mods": count_files(&gdir, "mods", &[".jar", ".jar.disabled"]),
-            "phase": Value::Null
+            "phase": self.run.tasks.lock().ok().and_then(|t| t.get(&key).map(|x| json!(x.phase()))).unwrap_or(Value::Null)
         })
     }
 
@@ -149,6 +288,50 @@ impl Api {
             c.insert(key.to_string(), (Instant::now(), v.clone()));
         }
         Ok(v)
+    }
+
+    fn current_account(&self) -> Option<Value> {
+        let accs = accounts::load(&self.dir);
+        let sel = self.settings.lock().ok().and_then(|s| s.get("last_account").and_then(|v| v.as_str().map(String::from))).unwrap_or_default();
+        accs.iter().find(|a| a["uuid"].as_str() == Some(sel.as_str())).or_else(|| accs.first()).cloned()
+    }
+
+    fn play(&self, key: &str) -> ApiResult {
+        let r = self.local_ref(key)?;
+        let task = {
+            let mut tasks = self.run.tasks.lock().map_err(|_| "внутренняя ошибка")?;
+            if let Some(t) = tasks.get(key) {
+                if matches!(t.phase().as_str(), "preparing" | "running") {
+                    return Err("Эта сборка уже запущена".into());
+                }
+            }
+            let acc = self.current_account().ok_or("Сначала добавь аккаунт: Ely.by или Microsoft (значок внизу слева)")?;
+            let t = Arc::new(RunTask::new());
+            tasks.insert(key.to_string(), t.clone());
+            (t, acc)
+        };
+        let (task, account) = task;
+        let s = self.settings.lock().map_err(|_| "внутренняя ошибка")?.clone();
+        let ram = r.inst["ram_mb"].as_i64().filter(|x| *x > 0).or(s.get("ram_mb").and_then(|v| v.as_i64())).unwrap_or(4096);
+        let spec = crate::launch::RunSpec {
+            root: self.dir.clone(),
+            ep: self.endpoints.clone(),
+            mc: r.mc.clone(),
+            loader: r.loader.clone(),
+            game_dir: r.gdir.clone(),
+            account,
+            user_java: s.get("java_path").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+            ram_mb: ram,
+            java_args: r.inst["java_args"].as_str().unwrap_or("").to_string(),
+        };
+        let (dir, run, k, name) = (self.dir.clone(), self.run.clone(), key.to_string(), r.name.clone());
+        std::thread::spawn(move || run_worker(dir, run, task, k, name, spec));
+        Ok(json!({}))
+    }
+
+    /// Идёт ли сейчас игра или подготовка к ней.
+    pub fn any_running(&self) -> bool {
+        self.run.tasks.lock().map(|t| t.values().any(|x| matches!(x.phase().as_str(), "preparing" | "running"))).unwrap_or(false)
     }
 
     fn clean_loader(v: &Value) -> Result<Value, ApiError> {
@@ -201,7 +384,43 @@ impl Api {
                 }))
             }
             "ping" | "bye" => Ok(json!({"ok": true})),
-            "poll" => Ok(json!({"tasks": {}, "progress": {}, "notice": 0, "notices": []})),
+            "poll" => {
+                let since = p["notice"].as_u64().unwrap_or(0);
+                let mut tasks = Map::new();
+                if let Ok(t) = self.run.tasks.lock() {
+                    for (k, v) in t.iter() {
+                        tasks.insert(k.clone(), json!({
+                            "phase": v.phase(), "error": v.error.lock().map(|e| e.clone()).unwrap_or_default(),
+                            "code": v.code.lock().ok().and_then(|c| *c), "started": v.started
+                        }));
+                    }
+                }
+                let progress = self.run.progress.lock().map(|g| g.clone()).unwrap_or_default();
+                let (nid, notes) = match self.run.notices.lock() {
+                    Ok(g) => (g.0, g.1.iter().filter(|n| n["id"].as_u64().unwrap_or(0) > since).cloned().collect::<Vec<_>>()),
+                    Err(_) => (0, Vec::new()),
+                };
+                Ok(json!({"tasks": tasks, "progress": progress, "notice": nid, "notices": notes}))
+            }
+            "play" => self.play(pstr(p, "key")?),
+            "stop" => {
+                if let Some(t) = self.run.tasks.lock().ok().and_then(|t| t.get(pstr(p, "key").unwrap_or("")).cloned()) {
+                    if t.phase() == "running" {
+                        t.stop.store(true, Ordering::Relaxed);
+                    }
+                }
+                Ok(json!({}))
+            }
+            "log" => {
+                let t = self.run.tasks.lock().ok().and_then(|t| t.get(pstr(p, "key").unwrap_or("")).cloned());
+                match t {
+                    None => Ok(json!({"lines": [], "next": 0, "phase": null})),
+                    Some(t) => {
+                        let (lines, next) = t.read(p["since"].as_u64().unwrap_or(0) as usize);
+                        Ok(json!({"lines": lines, "next": next, "phase": t.phase()}))
+                    }
+                }
+            }
             "settings.set" => self.settings_set(p),
             "meta.mc_versions" => {
                 let snap = p["snapshots"].as_bool().unwrap_or(false);

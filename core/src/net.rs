@@ -32,6 +32,10 @@ pub struct Endpoints {
     pub quilt: String,
     pub forge_meta: String,
     pub neoforge_meta: String,
+    pub java_all: String,
+    pub authlib: String,
+    pub forge_maven: String,
+    pub neoforge_maven: String,
 }
 
 impl Default for Endpoints {
@@ -43,6 +47,10 @@ impl Default for Endpoints {
             quilt: "https://meta.quiltmc.org/v3".into(),
             forge_meta: "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml".into(),
             neoforge_meta: "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml".into(),
+            java_all: "https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json".into(),
+            authlib: "https://authlib-injector.yushi.moe/artifact/latest.json".into(),
+            forge_maven: "https://maven.minecraftforge.net/net/minecraftforge/forge".into(),
+            neoforge_maven: "https://maven.neoforged.net/releases/net/neoforged/neoforge".into(),
         }
     }
 }
