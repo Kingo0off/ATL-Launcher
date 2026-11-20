@@ -43,6 +43,9 @@ pub struct Endpoints {
     pub ely_auth: String,
     pub mojang_api: String,
     pub session_api: String,
+    pub modrinth: String,
+    pub curseforge: String,
+    pub extra_trusted_hosts: Vec<String>,
 }
 
 impl Default for Endpoints {
@@ -65,6 +68,9 @@ impl Default for Endpoints {
             ely_auth: "https://authserver.ely.by".into(),
             mojang_api: "https://api.mojang.com".into(),
             session_api: "https://sessionserver.mojang.com".into(),
+            modrinth: "https://api.modrinth.com/v2".into(),
+            curseforge: "https://api.curseforge.com/v1".into(),
+            extra_trusted_hosts: Vec::new(),
         }
     }
 }

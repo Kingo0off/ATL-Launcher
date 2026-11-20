@@ -224,6 +224,7 @@ pub struct Api {
     pub store: Store,
     settings: Arc<Mutex<Map<String, Value>>>,
     ms_flow: Mutex<Option<Arc<MsFlow>>>,
+    updates: Mutex<HashMap<String, Vec<Value>>>,
     pub endpoints: Endpoints,
     cache: Mutex<HashMap<String, (Instant, Value)>>,
     run: Arc<RunState>,
@@ -233,7 +234,7 @@ impl Api {
     pub fn new(dir: PathBuf) -> Api {
         let s = settings::load(&dir);
         let _ = std::fs::create_dir_all(dir.join("tmp"));
-        Api { store: Store::new(dir.clone()), dir, settings: Arc::new(Mutex::new(s)), ms_flow: Mutex::new(None), endpoints: Endpoints::default(), cache: Mutex::new(HashMap::new()), run: Arc::new(RunState::default()) }
+        Api { store: Store::new(dir.clone()), dir, settings: Arc::new(Mutex::new(s)), ms_flow: Mutex::new(None), updates: Mutex::new(HashMap::new()), endpoints: Endpoints::default(), cache: Mutex::new(HashMap::new()), run: Arc::new(RunState::default()) }
     }
 
     pub fn tmp_dir(&self) -> PathBuf {
@@ -318,6 +319,53 @@ impl Api {
         let accs = accounts::load(&self.dir);
         let sel = self.settings.lock().ok().and_then(|s| s.get("last_account").and_then(|v| v.as_str().map(String::from))).unwrap_or_default();
         accs.iter().find(|a| a["uuid"].as_str() == Some(sel.as_str())).or_else(|| accs.first()).cloned()
+    }
+
+    fn cf_key(&self) -> String {
+        self.settings.lock().ok().and_then(|s| s.get("cf_api_key").and_then(|v| v.as_str().map(|x| x.trim().to_string()))).unwrap_or_default()
+    }
+
+    fn import_file(&self, path: &Path, tag: &str) -> Result<Value, String> {
+        let run = self.run.clone();
+        let r = crate::importer::import_archive(&self.store, &self.endpoints, &self.cf_key(), path, &|d, t, l| run.set_progress(tag, d, t, l), &|_| {});
+        run.clear_progress(tag);
+        r
+    }
+
+    fn catalog_install(&self, p: &Value, cf: bool) -> ApiResult {
+        let ptype = if popt(p, "type").is_empty() { "mod" } else { popt(p, "type") };
+        let tag = if popt(p, "key").is_empty() { "global".to_string() } else { popt(p, "key").to_string() };
+        let pid = pstr(p, "project_id")?;
+        let ckey = self.cf_key();
+        let meta = json!({"title": p["title"], "icon_url": p["icon_url"], "site_url": p["site_url"]});
+        let title = popt(p, "title");
+        let site = popt(p, "site_url");
+        let ep = &self.endpoints;
+        if ptype == "modpack" {
+            let (url, fname, sha) = if cf { crate::catalog::cf_modpack_file(ep, &ckey, pid, title, site)? } else { crate::catalog::mr_modpack_file(ep, pid)? };
+            let tmp = self.tmp_dir().join(format!("{:08x}-{}", rand::random::<u32>(), fname));
+            let dl = crate::net::download(&url, &tmp, sha.as_deref(), None, 3).map_err(|e| e.0);
+            let imported = dl.and_then(|_| self.import_file(&tmp, &tag));
+            let _ = std::fs::remove_file(&tmp);
+            let mut inst = imported?;
+            let skipped = inst.as_object_mut().and_then(|m| m.remove("skipped")).unwrap_or_else(|| json!([]));
+            let mut out = json!({"instance": self.item_local(&inst, &self.stats())});
+            if cf {
+                out["skipped"] = skipped;
+            }
+            return Ok(out);
+        }
+        let r = self.local_ref(pstr(p, "key")?)?;
+        let kind = r.loader["type"].as_str().unwrap_or("vanilla");
+        if ptype == "mod" && kind == "vanilla" {
+            return Err("У этой сборки не выбран загрузчик — моды не заработают. Выбери Fabric, Quilt, Forge или NeoForge в настройках сборки.".into());
+        }
+        let files = if cf {
+            crate::catalog::cf_install(ep, &ckey, &r.gdir, &r.mc, kind, pid, ptype, &meta, true, &mut Default::default(), 0)?
+        } else {
+            crate::catalog::mr_install(ep, &r.gdir, &r.mc, kind, pid, ptype, &meta, true, &mut Default::default(), 0)?
+        };
+        Ok(json!({"installed": files}))
     }
 
     fn select_account(&self, uuid: &str) {
@@ -634,6 +682,53 @@ impl Api {
                 crate::skins::remove(&self.dir, pstr(p, "id")?)?;
                 Ok(json!({}))
             }
+            "modrinth.search" | "curseforge.search" => {
+                let ptype = if popt(p, "type").is_empty() { "mod" } else { popt(p, "type") };
+                let sort = if popt(p, "sort").is_empty() { "relevance" } else { popt(p, "sort") };
+                let offset = p["offset"].as_u64().unwrap_or(0);
+                Ok(if name == "modrinth.search" {
+                    crate::catalog::mr_search(&self.endpoints, popt(p, "query"), ptype, popt(p, "mc"), popt(p, "loader"), sort, offset, 20)?
+                } else {
+                    crate::catalog::cf_search(&self.endpoints, &self.cf_key(), popt(p, "query"), ptype, popt(p, "mc"), popt(p, "loader"), sort, offset, 20)?
+                })
+            }
+            "modrinth.install" => self.catalog_install(p, false),
+            "curseforge.install" => self.catalog_install(p, true),
+            "mods.check_updates" => {
+                let key = pstr(p, "key")?;
+                let r = self.local_ref(key)?;
+                let kind = r.loader["type"].as_str().unwrap_or("vanilla");
+                if kind == "vanilla" {
+                    return Err("У сборки не выбран загрузчик, моды не используются".into());
+                }
+                let ups = crate::catalog::mr_check_updates(&self.endpoints, &r.gdir, &r.mc, kind)?;
+                let out: Vec<Value> = ups.iter().map(|u| json!({"file": u["file"], "version": u["version_number"]})).collect();
+                self.updates.lock().map_err(|_| "внутренняя ошибка")?.insert(key.to_string(), ups);
+                Ok(json!({"updates": out}))
+            }
+            "mods.update" => {
+                let key = pstr(p, "key")?;
+                let r = self.local_ref(key)?;
+                let wanted: Vec<String> = p["files"].as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default();
+                let pending = self.updates.lock().map_err(|_| "внутренняя ошибка")?.get(key).cloned().unwrap_or_default();
+                let (mut done, mut keep) = (0, Vec::new());
+                for u in pending {
+                    if wanted.iter().any(|w| u["file"].as_str() == Some(w.as_str())) {
+                        crate::catalog::mr_apply_update(&r.gdir, &u)?;
+                        done += 1;
+                    } else {
+                        keep.push(u);
+                    }
+                }
+                self.updates.lock().map_err(|_| "внутренняя ошибка")?.insert(key.to_string(), keep);
+                Ok(json!({"updated": done}))
+            }
+            "instances.export" => {
+                let r = self.local_ref(pstr(p, "key")?)?;
+                let path = crate::importer::export_zip(&self.dir, &r.inst, &r.gdir, p["include_worlds"].as_bool().unwrap_or(false))?;
+                let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+                Ok(json!({"path": path.to_string_lossy(), "size": size}))
+            }
             "instances.create" => self.instances_create(p),
             "instances.update" => self.instances_update(p),
             "instances.delete" => {
@@ -841,7 +936,16 @@ impl Api {
                 let variant = if popt(q, "variant").is_empty() { "classic" } else { popt(q, "variant") };
                 Ok(json!({"skin": crate::skins::add(&self.dir, stem, &data, variant)?}))
             }
-            "import" => Err("Импорт сборок появится на одном из следующих этапов переноса на Rust.".into()),
+            "import" => {
+                if !lower.ends_with(".mrpack") && !lower.ends_with(".zip") {
+                    return Err("Нужен файл .mrpack или .zip".into());
+                }
+                let mut inst = self.import_file(tmp, "global")?;
+                if let Some(m) = inst.as_object_mut() {
+                    m.remove("skipped");
+                }
+                Ok(json!({"instance": self.item_local(&inst, &self.stats())}))
+            }
             _ => Err("Неизвестный тип загрузки".into()),
         }
     }

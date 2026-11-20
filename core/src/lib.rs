@@ -1,6 +1,8 @@
 //! Ядро FriendLauncher. Интерфейс (HTML/JS) общается с ним по тем же запросам, что и в Python-версии.
 pub mod accounts;
 pub mod api;
+pub mod catalog;
+pub mod importer;
 pub mod auth;
 pub mod instances;
 pub mod launch;
