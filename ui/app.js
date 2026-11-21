@@ -247,6 +247,7 @@ function renderRail(r) {
     ${item('discover', 'compass', 'Обзор', r.name === 'discover')}
     ${item('shots', 'image', 'Снимки', r.name === 'shots')}
     ${item('skins', 'shirt', 'Скины', r.name === 'skins')}
+    ${item('network', 'globe', 'Сеть', r.name === 'network')}
     ${item('settings', 'sliders', 'Настройки', r.name === 'settings')}
     <div class="grow"></div>
     <button class="acct-btn ${acc ? '' : 'empty'}" data-act="acct-menu" title="${acc ? esc(acc.name) : 'Добавить аккаунт'}">${acc ? avatar(acc) : ic('user', 22)}</button>`;
@@ -822,6 +823,44 @@ function settingsHTML() {
       <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn sm" data-act="open-app" data-what="data">${ic('folder', 15)} Папка данных</button><button class="btn sm" data-act="open-app" data-what="exports">${ic('folder', 15)} Папка экспорта</button></div></section></div></div>`;
 }
 
+/* ====================== сеть: комнаты ====================== */
+function networkHTML() {
+  return `<div class="page"><div class="page-head"><div><h1>Сеть</h1><p class="sub">Играйте вместе по сети без настройки роутера и без VPN</p></div></div><div id="net-box" class="form-narrow" style="display:grid;gap:18px"><span class="spin"></span></div></div>`;
+}
+async function loadNetwork(st) {
+  const box = $('#net-box'); if (!box) return;
+  let d;
+  try { d = st || await api('room.status'); } catch (e) { box.innerHTML = `<p class="err-text">${esc(e.message)}</p>`; return; }
+  if (!$('#net-box')) return;
+  const how = `<p class="hint">Игра идёт напрямую между компьютерами (шифруется), а если не получается, через публичный сервер-посредник. Работает только для Minecraft. Все должны быть на одной и той же версии игры.</p>`;
+  if (d.mode === 'host') {
+    const wp = d.world_port;
+    box.innerHTML = `<section class="panel"><h2 class="sec">Твоя комната открыта</h2>
+      <p class="hint" style="margin-bottom:10px">Отправь код другу. Он вставит его на вкладке «Сеть» и нажмёт «Подключиться».</p>
+      <div class="code-box" style="font-size:15px;overflow-wrap:anywhere;user-select:all">${esc(d.code)}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"><button class="btn primary" data-act="copy-text" data-text="${esc(d.code)}">${ic('copy', 15)} Скопировать код</button><button class="btn" data-act="net-leave">Закрыть комнату</button></div>
+      <p style="margin-top:14px">Друзей подключено: <b>${d.peers}</b></p></section>
+      <section class="panel"><h2 class="sec">Мир для друзей</h2>
+      ${wp ? `<p>Найден открытый мир на порту <b>${wp}</b>. Друзья попадут в него.</p>` : `<p class="hint">Запусти игру, открой свой мир и в меню паузы нажми «Открыть для сети». Лаунчер сам найдёт порт. Если игра запущена не из лаунчера, впиши порт вручную.</p>`}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center"><input type="number" id="net-port" min="1024" max="65535" placeholder="Порт вручную" value="${d.manual_port || ''}" style="max-width:180px"><button class="btn sm" data-act="net-port">Применить</button></div>
+      ${d.refused ? `<p class="err-text" style="margin-top:10px">Попыток войти без открытого мира: ${d.refused}. Открой мир для сети.</p>` : ''}</section>${how}`;
+  } else if (d.mode === 'guest') {
+    const lost = d.status === 'lost';
+    box.innerHTML = `<section class="panel"><h2 class="sec">${lost ? 'Связь потеряна' : 'Ты в комнате'}</h2>
+      ${lost ? `<p class="err-text">${esc(d.error)}</p>` : `<p>Открой Minecraft: в «Сетевой игре» появится мир <b>«Комната друзей»</b>. Нажми на него и играй.</p>
+      <p class="hint" style="margin-top:10px">Если мир не появился, нажми «Прямое подключение» и введи адрес <b>localhost${d.listen_port === 25565 ? '' : ':' + d.listen_port}</b>.</p>`}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><button class="btn" data-act="net-leave">Выйти из комнаты</button></div></section>${how}`;
+  } else {
+    box.innerHTML = `<section class="panel"><h2 class="sec">Создать комнату</h2><p class="hint" style="margin-bottom:12px">Ты хозяин: друзья зайдут в твой мир. Нужен интернет.</p><button class="btn primary" data-act="net-host">${ic('plus', 16)} Создать комнату</button></section>
+      <section class="panel"><h2 class="sec">Подключиться к другу</h2><label class="fld"><span>Код комнаты</span><input type="text" id="net-code" placeholder="Вставь код от друга" autocomplete="off" spellcheck="false"></label><button class="btn primary" data-act="net-join">Подключиться</button></section>${how}`;
+  }
+  clearTimeout(S.netTimer);
+  if (d.mode) S.netTimer = setTimeout(() => { if (route().name === 'network') loadNetwork(); }, 2500);
+}
+async function netRun(fn) {
+  try { await loadNetwork(await fn()); } catch (e) { toast(e.message, 'error'); loadNetwork(); }
+}
+
 /* ====================== аккаунты ====================== */
 function acctMenu(anchor) {
   const accs = S.st.accounts, sel = curAccount();
@@ -964,6 +1003,10 @@ const A = {
       await refresh(); toast('Сохранено', 'ok'); render({ soft: true, hard: true });
     } catch (e) { toast(e.message, 'error'); } finally { el.disabled = false; }
   },
+  'net-host': el => { el.disabled = true; toast('Создаю комнату…'); return netRun(() => api('room.host', {})); },
+  'net-join': el => { const code = $('#net-code').value.trim(); if (!code) { toast('Вставь код комнаты', 'error'); return; } el.disabled = true; toast('Подключаюсь…'); return netRun(() => api('room.join', { code })); },
+  'net-leave': () => netRun(() => api('room.leave')),
+  'net-port': () => netRun(() => api('room.set_port', { port: +$('#net-port').value || 0 })),
   'save-app-settings': async () => {
     const d = await api('settings.set', { ram_mb: +$('#st-ram').value, java_path: $('#st-java').value, ms_client_id: $('#st-ms').value, cf_api_key: $('#st-cf').value });
     S.st.settings = d.settings; toast('Настройки сохранены', 'ok');
@@ -1148,6 +1191,7 @@ function render(opts = {}) {
   else if (r.name === 'discover') { v.innerHTML = discoverHTML(); browseInto($('#browse'), null); }
   else if (r.name === 'shots') { v.innerHTML = shotsHTML(); if (S.shots?.list && opts.soft) drawShots(); else loadShots(); }
   else if (r.name === 'skins') { v.innerHTML = skinsHTML(); if (S.sk?.list && opts.soft) drawSkins(); else loadSkins(); }
+  else if (r.name === 'network') { v.innerHTML = networkHTML(); loadNetwork(); }
   else if (r.name === 'settings') v.innerHTML = settingsHTML();
   else if (r.name === 'i') renderInstance(r);
   else go('library');

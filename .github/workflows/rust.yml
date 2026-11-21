@@ -22,6 +22,11 @@ jobs:
         run: |
           set -o pipefail
           cargo test -p friendlauncher-core --color never 2>&1 | tee "$RUNNER_TEMP/test.log"
+      - name: Сетевой тест туннеля (не блокирует сборку)
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          cargo test -p friendlauncher-core --test room_net --color never -- --ignored --nocapture 2>&1 | tee "$RUNNER_TEMP/net.log"
       - name: Сборка .exe
         run: |
           set -o pipefail
@@ -45,6 +50,7 @@ jobs:
             echo "commit: $GITHUB_SHA"
             echo "job status: ${{ job.status }}"
             echo "=== тесты ==="; touch "$RUNNER_TEMP/test.log" "$RUNNER_TEMP/build.log"; grep -v "^\s*\(Compiling\|Downloaded\|Downloading\)" "$RUNNER_TEMP/test.log" 2>/dev/null | tail -n 400
+            echo "=== сеть ==="; touch "$RUNNER_TEMP/net.log"; grep -v "^\s*\(Compiling\|Downloaded\|Downloading\)" "$RUNNER_TEMP/net.log" 2>/dev/null | tail -n 60
             echo "=== сборка ==="; grep -v "^\s*\(Compiling\|Downloaded\|Downloading\)" "$RUNNER_TEMP/build.log" 2>/dev/null | tail -n 300
           } > "$RUNNER_TEMP/ci-log.txt"
           cp Cargo.lock "$RUNNER_TEMP/Cargo.lock" 2>/dev/null || true

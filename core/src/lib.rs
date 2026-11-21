@@ -12,6 +12,7 @@ pub mod mojang;
 pub mod mods;
 pub mod net;
 pub mod paths;
+pub mod room;
 pub mod server;
 pub mod settings;
 pub mod shots;

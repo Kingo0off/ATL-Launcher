@@ -14,3 +14,5 @@ ureq = "2"
 sha1 = "0.10"
 sha2 = "0.10"
 base64 = "0.22"
+iroh = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "time", "macros", "sync"] }

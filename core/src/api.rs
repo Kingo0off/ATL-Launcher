@@ -115,6 +115,12 @@ impl RunState {
     }
 }
 
+/// Порт мира, открытого для сети, по журналам запущенных игр.
+fn detect_world_port(run: &RunState) -> Option<u16> {
+    let tasks: Vec<Arc<RunTask>> = run.tasks.lock().ok()?.values().cloned().collect();
+    tasks.iter().filter(|t| t.phase() == "running").filter_map(|t| crate::room::detect_port(&t.read(0).0)).last()
+}
+
 fn now_secs() -> f64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0)
 }
@@ -225,6 +231,8 @@ pub struct Api {
     settings: Arc<Mutex<Map<String, Value>>>,
     ms_flow: Mutex<Option<Arc<MsFlow>>>,
     updates: Mutex<HashMap<String, Vec<Value>>>,
+    room: Mutex<Option<crate::room::Active>>,
+    room_port: Arc<std::sync::atomic::AtomicU16>,
     pub endpoints: Endpoints,
     cache: Mutex<HashMap<String, (Instant, Value)>>,
     run: Arc<RunState>,
@@ -234,7 +242,7 @@ impl Api {
     pub fn new(dir: PathBuf) -> Api {
         let s = settings::load(&dir);
         let _ = std::fs::create_dir_all(dir.join("tmp"));
-        Api { store: Store::new(dir.clone()), dir, settings: Arc::new(Mutex::new(s)), ms_flow: Mutex::new(None), updates: Mutex::new(HashMap::new()), endpoints: Endpoints::default(), cache: Mutex::new(HashMap::new()), run: Arc::new(RunState::default()) }
+        Api { store: Store::new(dir.clone()), dir, settings: Arc::new(Mutex::new(s)), ms_flow: Mutex::new(None), updates: Mutex::new(HashMap::new()), room: Mutex::new(None), room_port: Arc::new(std::sync::atomic::AtomicU16::new(0)), endpoints: Endpoints::default(), cache: Mutex::new(HashMap::new()), run: Arc::new(RunState::default()) }
     }
 
     pub fn tmp_dir(&self) -> PathBuf {
@@ -319,6 +327,34 @@ impl Api {
         let accs = accounts::load(&self.dir);
         let sel = self.settings.lock().ok().and_then(|s| s.get("last_account").and_then(|v| v.as_str().map(String::from))).unwrap_or_default();
         accs.iter().find(|a| a["uuid"].as_str() == Some(sel.as_str())).or_else(|| accs.first()).cloned()
+    }
+
+    fn room_leave(&self) {
+        let old = self.room.lock().ok().and_then(|mut g| g.take());
+        if let Some(a) = old {
+            a.stop();
+        }
+    }
+
+    fn room_status(&self) -> Value {
+        let manual = self.room_port.load(Ordering::Relaxed);
+        let world = if manual != 0 { Some(manual) } else { detect_world_port(&self.run) };
+        match self.room.lock().ok().and_then(|g| {
+            g.as_ref().map(|a| {
+                json!({
+                    "mode": a.mode, "status": a.info.status(), "code": a.code, "error": a.info.error(),
+                    "peers": a.info.peers.load(Ordering::Relaxed), "refused": a.info.refused.load(Ordering::Relaxed),
+                    "listen_port": a.info.listen_port.load(Ordering::Relaxed)
+                })
+            })
+        }) {
+            Some(mut v) => {
+                v["world_port"] = json!(world);
+                v["manual_port"] = json!(manual);
+                v
+            }
+            None => json!({"mode": "", "status": "", "code": "", "error": "", "peers": 0, "refused": 0, "listen_port": 0, "world_port": world, "manual_port": manual}),
+        }
     }
 
     fn cf_key(&self) -> String {
@@ -681,6 +717,35 @@ impl Api {
             "skins.delete" => {
                 crate::skins::remove(&self.dir, pstr(p, "id")?)?;
                 Ok(json!({}))
+            }
+            "room.status" => Ok(self.room_status()),
+            "room.host" => {
+                let manual = p["port"].as_u64().filter(|x| (1024..=65535).contains(x)).unwrap_or(0) as u16;
+                self.room_port.store(manual, Ordering::Relaxed);
+                self.room_leave();
+                let (run, port) = (self.run.clone(), self.room_port.clone());
+                let target: Arc<dyn Fn() -> Option<u16> + Send + Sync> = Arc::new(move || match port.load(Ordering::Relaxed) {
+                    0 => detect_world_port(&run),
+                    n => Some(n),
+                });
+                let act = crate::room::host(target)?;
+                *self.room.lock().map_err(|_| "внутренняя ошибка")? = Some(act);
+                Ok(self.room_status())
+            }
+            "room.join" => {
+                self.room_leave();
+                let act = crate::room::join(popt(p, "code"))?;
+                *self.room.lock().map_err(|_| "внутренняя ошибка")? = Some(act);
+                Ok(self.room_status())
+            }
+            "room.set_port" => {
+                let manual = p["port"].as_u64().filter(|x| (1024..=65535).contains(x)).unwrap_or(0) as u16;
+                self.room_port.store(manual, Ordering::Relaxed);
+                Ok(self.room_status())
+            }
+            "room.leave" => {
+                self.room_leave();
+                Ok(self.room_status())
             }
             "modrinth.search" | "curseforge.search" => {
                 let ptype = if popt(p, "type").is_empty() { "mod" } else { popt(p, "type") };
