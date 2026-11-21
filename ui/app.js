@@ -1394,12 +1394,20 @@ async function pollLoop() {
   }
 }
 
+function hideSplash() {
+  const s = document.getElementById('splash');
+  if (!s) return;
+  s.classList.add('out');
+  setTimeout(() => s.remove(), 450);
+}
 (async function init() {
   try { await refresh(); } catch (e) {
     $('#view').innerHTML = `<div class="page"><div class="empty"><h3>Не удалось загрузить данные</h3><p>${esc(e.message)}</p></div></div>`;
+    hideSplash();
     return;
   }
   render();
+  hideSplash();
   pollLoop();
   checkUpdate(false);
   addEventListener('pagehide', () => navigator.sendBeacon('api/bye', '{}'));

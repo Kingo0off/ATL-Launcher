@@ -40,11 +40,26 @@ fn main() {
         }))
         .setup(move |app| {
             let parsed = url.parse().expect("адрес интерфейса");
+            // Окно показываем, когда страница загрузилась (или через 6 секунд в любом случае),
+            // чтобы не мелькал пустой белый экран. Дальше работает заставка внутри страницы.
             WebviewWindowBuilder::new(app, "main", WebviewUrl::External(parsed))
                 .title(APP_NAME)
                 .inner_size(1280.0, 820.0)
                 .min_inner_size(900.0, 600.0)
+                .visible(false)
+                .on_page_load(|w, payload| {
+                    if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
+                        let _ = w.show();
+                    }
+                })
                 .build()?;
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(6));
+                if let Some(w) = handle.get_webview_window("main") {
+                    let _ = w.show();
+                }
+            });
             Ok(())
         })
         .build(tauri::generate_context!())
