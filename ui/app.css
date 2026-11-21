@@ -363,7 +363,7 @@ canvas.bad { opacity: .2; }
 @keyframes fx-twinkle { from { opacity: .35; } to { opacity: 1; } }
 #fx .heart { position: absolute; bottom: -30px; font-size: var(--s); animation: fx-rise var(--t) linear infinite; opacity: .8; }
 @keyframes fx-rise { to { transform: translate(var(--w), calc(-100vh - 40px)); } }
-@media (prefers-reduced-motion: reduce) { #fx .flake, #fx .heart, 
+@media (prefers-reduced-motion: reduce) { #fx .flake, #fx .heart, #fx .bat { display: none; } #fx .spider, #fx .garland i { animation: none; } }
 /* сугробы на кнопках */
 .fx-newyear .btn.primary, .fx-newyear .btn.play, .fx-newyear .card, .fx-newyear .rail-btn.on { position: relative; }
 .fx-newyear .btn.primary::after, .fx-newyear .btn.play::after, .fx-newyear .card::after, .fx-newyear .rail-btn.on::after {
@@ -399,3 +399,5 @@ canvas.bad { opacity: .2; }
 .fx-halloween .card:hover, .fx-halloween .btn.primary:hover { box-shadow: 0 0 18px rgba(251,146,60,.35); }
 .fx-halloween .btn.play { box-shadow: 0 0 22px rgba(251,146,60,.5); }
 @media (prefers-reduced-motion: reduce) { #fx .bat svg, #fx .pumpkin, #fx .mist { animation: none; } }
+.fx-halloween .btn.play { position: relative; overflow: visible; }
+.fx-halloween .btn.play::before { content: "🎃"; position: absolute; top: -15px; right: -9px; font-size: 22px; pointer-events: none; }
