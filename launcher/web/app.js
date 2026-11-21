@@ -233,7 +233,7 @@ function playBtn(it, size = '') {
   const k = esc(it.key);
   if (it.phase === 'running') return `<button class="btn stop ${size}" data-act="stop" data-key="${k}">${ic('stop')} Остановить</button>`;
   if (it.phase === 'preparing') return `<button class="btn play ${size}" disabled><span class="spin"></span> Подготовка…</button>`;
-  const label = it.kind === 'server' ? (it.status === 'new' ? 'Установить и играть' : it.status === 'update' ? 'Обновить и играть' : 'Играть') : 'Играть';
+  const label = 'Играть';
   return `<button class="btn play ${size}" data-act="play" data-key="${k}">${ic('play')} ${label}</button>`;
 }
 
@@ -268,13 +268,13 @@ function libItems() {
 }
 function cardHTML(it) {
   const k = esc(it.key), running = it.phase === 'running', prep = it.phase === 'preparing';
-  const tag = it.kind === 'server'
-    ? `<span class="badge ${it.status}">${ic('server', 12)} ${it.status === 'new' ? 'От друзей' : it.status === 'update' ? 'Есть обновление' : 'От друзей'}</span>` : '';
+  const tag = '';
+
   const live = running ? '<span class="live">Запущена</span>' : prep ? '<span class="live prep">Готовится</span>' : '';
-  const meta = it.kind === 'server' && it.status === 'new' ? 'Ещё не установлена' : fmtAgo(it.last_played);
+  const meta = fmtAgo(it.last_played);
   const btn = running
     ? `<button class="card-play stop always" data-act="stop" data-key="${k}" title="Остановить">${ic('stop', 18)}</button>`
-    : prep ? '' : `<button class="card-play" data-act="play" data-key="${k}" title="${it.kind === 'server' && it.status !== 'ready' ? 'Установить и играть' : 'Играть'}">${ic('play', 20)}</button>`;
+    : prep ? '' : `<button class="card-play" data-act="play" data-key="${k}" title="Играть">${ic('play', 20)}</button>`;
   return `<article class="card" style="${palVars(pal(it.icon_seed))}" data-act="open" data-key="${k}" tabindex="0" role="link" aria-label="${esc(it.name)}">
     <div class="card-art">${art(it.icon_seed)}${tag}${live}${btn}</div>
     <div class="card-body"><h3 title="${esc(it.name)}">${esc(it.name)}</h3>${chips(it)}<div class="meta">${ic('clock', 13)}${esc(meta)}</div></div></article>`;
@@ -286,7 +286,7 @@ function gridHTML() {
       <div style="margin-top:18px;display:flex;gap:10px;justify-content:center"><button class="btn primary" data-act="create">${ic('plus')} Новая сборка</button><button class="btn" data-act="nav" data-to="discover">${ic('compass')} Найти сборку</button></div></div>`;
   }
   if (!a.length) return `<div class="empty"><h3>Ничего не нашлось</h3><p>Попробуй другой запрос или смени фильтр.</p></div>`;
-  return `<div class="grid">${a.map(cardHTML).join('')}${S.lib.filter !== 'server' && !S.lib.q ? `<button class="card new-card" data-act="create">${ic('plus', 26)}Новая сборка</button>` : ''}</div>`;
+  return `<div class="grid">${a.map(cardHTML).join('')}${!S.lib.q ? `<button class="card new-card" data-act="create">${ic('plus', 26)}Новая сборка</button>` : ''}</div>`;
 }
 function heroHTML() {
   if (!curAccount()) {
@@ -305,9 +305,7 @@ function libraryHTML() {
     <div class="head-actions"><button class="btn" data-act="import">${ic('download')} Импорт</button><button class="btn primary" data-act="create">${ic('plus')} Новая сборка</button></div></div>
     <div id="hero">${heroHTML()}</div>
     <div class="toolbar"><div class="search">${ic('search', 16)}<input type="search" id="lib-q" placeholder="Поиск по сборкам" value="${esc(S.lib.q)}" autocomplete="off"></div>
-      <div class="seg" id="lib-filter">${[['all', 'Все'], ['local', 'Мои'], ['server', 'От друзей']].map(([k, t]) => `<button data-act="lib-filter" data-v="${k}" class="${S.lib.filter === k ? 'on' : ''}">${t}</button>`).join('')}</div>
       <select id="lib-sort" aria-label="Сортировка">${[['recent', 'Недавние'], ['name', 'По имени'], ['time', 'По времени игры']].map(([k, t]) => `<option value="${k}" ${S.lib.sort === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-    ${S.st.packs_error ? `<div class="note warn">Сборки от друзей недоступны: ${esc(S.st.packs_error)}</div>` : ''}
     <div id="grid">${gridHTML()}</div></div>`;
 }
 
@@ -351,7 +349,6 @@ async function tabOverview(it, el) {
   el.innerHTML = `
     ${!curAccount() ? `<div class="note">Чтобы играть, <a href="#" data-act="acct-menu">добавь аккаунт</a> Ely.by или Microsoft.</div>` : ''}
     ${it.kind === 'local' && vanilla && m.mods.length ? '<div class="note warn">В сборке есть моды, но загрузчик не выбран — они не заработают. Выбери Fabric, Quilt, Forge или NeoForge на вкладке «Настройки».</div>' : ''}
-    ${it.kind === 'server' ? `<div class="note">${it.description ? esc(it.description) + '<br>' : ''}Сборка приходит с сервера: версия ${esc(it.version)}${it.installed_version ? `, установлена ${esc(it.installed_version)}` : ', ещё не установлена'}. Файлы обновляются при каждом запуске.</div>` : ''}
     <div class="stats">
       <div class="stat"><span>Последний запуск</span><b>${esc(fmtAgo(it.last_played))}</b></div>
       <div class="stat"><span>Время в игре</span><b>${esc(fmtDur(it.playtime_s))}</b></div>
@@ -364,8 +361,7 @@ async function tabOverview(it, el) {
         ${it.java_args ? `<dt>Аргументы JVM</dt><dd>${esc(it.java_args)}</dd><span></span>` : ''}
         <dt>Папка игры</dt><dd>Миры, моды, настройки</dd><button class="btn sm" data-act="inst-folder" data-key="${esc(it.key)}">Открыть</button></dl></section>
       <section class="panel"><h2 class="sec">Действия</h2><div class="action-list">
-        ${it.kind === 'local' ? `<button class="btn" data-act="inst-publish" data-key="${esc(it.key)}">${ic('share')} Опубликовать для друзей</button>
-          <button class="btn" data-act="inst-export" data-key="${esc(it.key)}">${ic('upload')} Экспорт в .zip</button>
+        ${it.kind === 'local' ? `<button class="btn" data-act="inst-export" data-key="${esc(it.key)}">${ic('upload')} Экспорт в .zip</button>
           <button class="btn" data-act="inst-dup" data-key="${esc(it.key)}">${ic('copy')} Сделать копию</button>` : `<button class="btn" data-act="inst-folder" data-key="${esc(it.key)}">${ic('folder')} Открыть папку</button>`}
         <button class="btn" data-act="tab" data-tab="log">${ic('terminal')} Журнал игры</button></div></section></div>`;
 }
@@ -376,7 +372,7 @@ async function tabMods(it, el) {
   if (!$('#tabbody')) return;
   S.mods = { ...d, key: it.key, local: it.kind === 'local' };
   S.modq = '';
-  el.innerHTML = `${d.readonly ? '<div class="note">Моды сборки от друзей обновляются с сервера, поэтому здесь они только для просмотра.</div>' : ''}
+  el.innerHTML = `
     <div class="log-bar"><div class="search" style="flex:1;min-width:200px">${ic('search', 16)}<input type="search" id="mod-q" placeholder="Фильтр по названию" autocomplete="off"></div>
       ${d.readonly ? '' : `<button class="btn" data-act="mods-check">${ic('refresh')} Проверить обновления</button><span id="upd-all"></span>
         <button class="btn primary" data-act="mods-add">${ic('plus')} Добавить .jar</button><input type="file" id="file-mod" accept=".jar" multiple hidden>`}</div>
@@ -460,7 +456,7 @@ async function tabSettings(it, el) {
     <div class="fld"><span>Память, МБ</span><input type="number" id="s-ram" min="0" step="256" value="${it.ram_mb || ''}" placeholder="Общая: ${S.st.settings.ram_mb}">
       <div class="ram-presets">${[2048, 4096, 6144, 8192].map(v => `<button class="btn sm" data-act="ram-preset" data-v="${v}">${v / 1024} ГБ</button>`).join('')}<button class="btn sm ghost" data-act="ram-preset" data-v="">Общая</button></div></div>
     <label class="fld"><span>Аргументы JVM</span><input type="text" id="s-jvm" value="${esc(it.java_args)}" placeholder="например, -XX:+UseG1GC"></label>
-    <label class="fld"><span>Описание</span><textarea id="s-notes" maxlength="500">${esc(it.notes)}</textarea><small>Показывается друзьям, если опубликуешь сборку.</small></label>
+    <label class="fld"><span>Описание</span><textarea id="s-notes" maxlength="500">${esc(it.notes)}</textarea></label>
     <div style="display:flex;justify-content:flex-end"><button class="btn primary" data-act="save-settings" data-id="${esc(it.id)}">Сохранить</button></div></section>
     <section class="danger-zone"><div><h2 class="sec" style="margin:0">Удалить сборку</h2><p>Вместе с мирами, модами и настройками. Это нельзя отменить.</p></div><button class="btn danger" data-act="inst-delete" data-key="${esc(it.key)}">${ic('trash')} Удалить</button></section></div>`;
   S.vp = versionPicker($('#vp'), { mc: it.mc_version, loader: it.loader });
@@ -551,7 +547,7 @@ function drawCreate(tab) {
       <input type="file" id="imp-file" accept=".mrpack,.zip" hidden><p class="hint" style="margin-top:14px">.mrpack с Modrinth, экспорт FriendLauncher или .zip из Prism / MultiMC</p></div>`;
     return;
   }
-  body.innerHTML = `<label class="fld"><span>Название</span><input type="text" id="cr-name" placeholder="Например, Выживание с друзьями" maxlength="60"></label>
+  body.innerHTML = `<label class="fld"><span>Название</span><input type="text" id="cr-name" placeholder="Например, Выживание" maxlength="60"></label>
     <div id="vp"></div>
     <details class="adv"><summary>Дополнительно</summary><div class="two"><label class="fld"><span>Память, МБ</span><input type="number" id="cr-ram" min="0" step="256" placeholder="Общая"></label>
     <label class="fld"><span>Аргументы JVM</span><input type="text" id="cr-jvm"></label></div></details>
@@ -822,11 +818,22 @@ function settingsHTML() {
       ${f('st-java', 'Путь к Java', s.java_path, 'Оставь пустым — лаунчер сам скачает нужную Java.', 'text', 'Автоматически')}</section>
     <section class="panel"><h2 class="sec">Вход через Microsoft</h2>${f('st-ms', 'Client ID приложения Azure', s.ms_client_id, 'Нужен только для входа через Microsoft. Как получить — в README, раздел «Вход через Microsoft».', 'text', '00000000-0000-0000-0000-000000000000')}</section>
     <section class="panel"><h2 class="sec">CurseForge</h2>${f('st-cf', 'Ключ API CurseForge', s.cf_api_key || '', 'Бесплатный ключ нужен для поиска и установки с CurseForge: console.curseforge.com → API keys. Если автор мода запретил загрузку из сторонних лаунчеров, файл придётся скачать на сайте.', 'password', '$2a$10$…')}</section>
-    <section class="panel"><h2 class="sec">Сборки от друзей</h2>${f('st-server', 'Адрес сервера сборок', s.server_url, 'Ссылка на index.json или на папку, куда ты залил опубликованные сборки.', 'text', 'https://example.github.io/my-packs/')}</section>
-    <section class="panel"><h2 class="sec">Публикация для друзей</h2>${f('st-site', 'Папка сайта на этом компьютере', s.site_dir, 'Сюда кнопка «Опубликовать для друзей» кладёт файлы. Содержимое этой папки заливаешь на хостинг.', 'text', 'C:\\Users\\Я\\friends-site')}
-      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn sm" data-act="open-app" data-what="site">${ic('folder', 15)} Открыть папку сайта</button></div></section>
+    <section class="panel"><h2 class="sec">Раздать лаунчер друзьям</h2><p class="hint" style="margin-bottom:12px">Друзья в той же сети (Wi-Fi, Radmin, Hamachi, ZeroTier) открывают адрес в браузере и скачивают этот лаунчер. Пока раздача включена, окно лаунчера держи открытым.</p><div id="share-box"><span class="spin"></span></div></section>
     <section class="panel"><h2 class="sec">Данные</h2><p class="hint" style="margin-bottom:12px;overflow-wrap:anywhere">${esc(S.st.data_dir)}</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn sm" data-act="open-app" data-what="data">${ic('folder', 15)} Папка данных</button><button class="btn sm" data-act="open-app" data-what="exports">${ic('folder', 15)} Папка экспорта</button></div></section></div></div>`;
+}
+
+/* ====================== раздача лаунчера по сети ====================== */
+async function loadShare(st) {
+  const box = $('#share-box'); if (!box) return;
+  try {
+    const d = st || await api('share.status');
+    if (!$('#share-box')) return;
+    box.innerHTML = d.running
+      ? `<div class="code-box" style="font-size:18px;overflow-wrap:anywhere">${esc(d.url)}</div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn sm" data-act="copy-text" data-text="${esc(d.url)}">${ic('copy', 15)} Скопировать адрес</button><button class="btn sm" data-act="share-toggle">Остановить раздачу</button></div>
+        <p class="hint" style="margin-top:10px">Если страница у друга не открывается, разреши FriendLauncher в брандмауэре Windows для частной сети.</p>`
+      : `<button class="btn sm primary" data-act="share-toggle">Включить раздачу</button>`;
+  } catch (e) { box.innerHTML = `<p class="err-text">${esc(e.message)}</p>`; }
 }
 
 /* ====================== аккаунты ====================== */
@@ -895,35 +902,7 @@ function msLogin(codeMode = false) {
   }).catch(e => { const b = $('#ms-body'); if (b) b.innerHTML = `<p class="err-text">${esc(e.message)}</p>`; });
 }
 
-/* ====================== публикация и экспорт ====================== */
-async function openPublish(key) {
-  const d = await api('publish.defaults', { key });
-  modal({
-    title: 'Опубликовать для друзей', wide: true,
-    body: `<p class="hint" style="margin-bottom:14px">Лаунчер соберёт сборку в папку сайта. Потом ты заливаешь её на хостинг, и у друзей появляется кнопка «Установить» или «Обновить».</p>
-      <div class="two"><label class="fld"><span>Название для друзей</span><input type="text" id="pb-name" value="${esc(d.name)}"></label>
-      <label class="fld"><span>Версия сборки</span><input type="text" id="pb-ver" value="${esc(d.version)}"><small>Меняй при каждом обновлении.</small></label></div>
-      <label class="fld"><span>Идентификатор</span><input type="text" id="pb-id" value="${esc(d.pack_id)}" ${d.first ? '' : 'readonly'}><small>Латиницей, без пробелов. Не меняй после первой публикации — по нему лаунчер узнаёт сборку.</small></label>
-      <label class="fld"><span>Описание</span><textarea id="pb-desc">${esc(d.description)}</textarea></label>
-      <label class="fld"><span>Папка сайта</span><input type="text" id="pb-site" value="${esc(d.site_dir)}" placeholder="Куда сложить файлы, например C:\\Users\\Я\\friends-site"></label><p class="err-text" id="m-err"></p><div id="pb-result"></div>`,
-    foot: '<button class="btn" data-act="modal-close">Закрыть</button><button class="btn primary" id="pb-go">Опубликовать</button>',
-    onMount: m => {
-      $('#pb-go', m).onclick = async () => {
-        const b = $('#pb-go', m), err = $('#m-err', m);
-        err.textContent = ''; b.disabled = true;
-        try {
-          const site = $('#pb-site', m).value.trim();
-          if (site !== d.site_dir) await api('settings.set', { site_dir: site });
-          const r = await api('publish', { key, pack_id: $('#pb-id', m).value.trim(), name: $('#pb-name', m).value.trim(), description: $('#pb-desc', m).value, version: $('#pb-ver', m).value.trim() });
-          await refresh();
-          $('#pb-result', m).innerHTML = `<div class="note">Готово: ${r.files} ${plural(r.files, 'файл', 'файла', 'файлов')}, ${esc(fmtSize(r.size))}. Теперь залей содержимое папки на хостинг. Адрес друзьям — ссылка на <b>index.json</b> (или на папку).
-            <div style="margin-top:10px"><button class="btn sm" data-act="open-app" data-what="site">${ic('folder', 15)} Открыть папку сайта</button></div>${r.big.length ? `<p class="err-text" style="margin-top:8px">Файлы больше 95 МБ не примет GitHub: ${esc(r.big.join(', '))}</p>` : ''}</div>`;
-          b.textContent = 'Опубликовано'; toast('Сборка опубликована в папке сайта', 'ok');
-        } catch (e) { err.textContent = e.message; b.disabled = false; }
-      };
-    },
-  });
-}
+/* ====================== экспорт ====================== */
 function openExport(key) {
   modal({
     title: 'Экспорт в .zip',
@@ -970,10 +949,9 @@ const A = {
   'copy-text': async el => { try { await navigator.clipboard.writeText(el.dataset.text); toast('Скопировано', 'ok'); } catch (e) { toast('Не удалось скопировать — выдели текст вручную', 'error'); } },
   'inst-menu': el => {
     const k = esc(el.dataset.key);
-    popAt(el, `<button class="item" data-act="inst-publish" data-key="${k}">${ic('share', 16)} Опубликовать для друзей</button><button class="item" data-act="inst-export" data-key="${k}">${ic('upload', 16)} Экспорт в .zip</button>
+    popAt(el, `<button class="item" data-act="inst-export" data-key="${k}">${ic('upload', 16)} Экспорт в .zip</button>
       <button class="item" data-act="inst-dup" data-key="${k}">${ic('copy', 16)} Сделать копию</button><hr><button class="item danger" data-act="inst-delete" data-key="${k}">${ic('trash', 16)} Удалить сборку</button>`, { right: true });
   },
-  'inst-publish': async el => { closePop(); await openPublish(el.dataset.key); },
   'inst-export': el => { closePop(); openExport(el.dataset.key); },
   'inst-dup': async el => {
     closePop();
@@ -1000,8 +978,11 @@ const A = {
       await refresh(); toast('Сохранено', 'ok'); render({ soft: true, hard: true });
     } catch (e) { toast(e.message, 'error'); } finally { el.disabled = false; }
   },
+  'share-toggle': async () => {
+    try { const cur = await api('share.status'); await loadShare(await api(cur.running ? 'share.stop' : 'share.start')); } catch (e) { toast(e.message, 'error'); }
+  },
   'save-app-settings': async () => {
-    const d = await api('settings.set', { ram_mb: +$('#st-ram').value, java_path: $('#st-java').value, ms_client_id: $('#st-ms').value, cf_api_key: $('#st-cf').value, server_url: $('#st-server').value, site_dir: $('#st-site').value });
+    const d = await api('settings.set', { ram_mb: +$('#st-ram').value, java_path: $('#st-java').value, ms_client_id: $('#st-ms').value, cf_api_key: $('#st-cf').value });
     S.st.settings = d.settings; toast('Настройки сохранены', 'ok');
     setTimeout(async () => { await refresh(); }, 1500);
   },
@@ -1184,7 +1165,7 @@ function render(opts = {}) {
   else if (r.name === 'discover') { v.innerHTML = discoverHTML(); browseInto($('#browse'), null); }
   else if (r.name === 'shots') { v.innerHTML = shotsHTML(); if (S.shots?.list && opts.soft) drawShots(); else loadShots(); }
   else if (r.name === 'skins') { v.innerHTML = skinsHTML(); if (S.sk?.list && opts.soft) drawSkins(); else loadSkins(); }
-  else if (r.name === 'settings') v.innerHTML = settingsHTML();
+  else if (r.name === 'settings') { v.innerHTML = settingsHTML(); loadShare(); }
   else if (r.name === 'i') renderInstance(r);
   else go('library');
   if (!opts.soft) $('#main').scrollTop = 0;

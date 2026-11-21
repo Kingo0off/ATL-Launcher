@@ -3,12 +3,15 @@ on:
   push:
     branches: [main]
     paths: ["core/**", "src-tauri/**", "Cargo.toml", "launcher/web/**", ".github/workflows/rust.yml"]
+    tags: ["v*"]
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
   windows:
     runs-on: windows-latest
+    env:
+      FL_MS_CLIENT_ID: ${{ vars.FL_MS_CLIENT_ID }}
     defaults:
       run:
         shell: bash
@@ -23,10 +26,17 @@ jobs:
         run: |
           set -o pipefail
           cargo build --release -p friendlauncher --color never 2>&1 | tee "$RUNNER_TEMP/build.log"
+      - name: Имя файла для скачивания
+        run: cp target/release/friendlauncher.exe FriendLauncher.exe
       - uses: actions/upload-artifact@v4
         with:
           name: FriendLauncher-rust-exe
-          path: target/release/friendlauncher.exe
+          path: FriendLauncher.exe
+      - name: Релиз (по тегу v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: FriendLauncher.exe
       - name: Журнал в ветку ci-logs (чтобы разработчик мог его прочитать)
         if: always()
         run: |

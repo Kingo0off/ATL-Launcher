@@ -7,7 +7,7 @@ pub const PUBLIC: [&str; 6] = ["server_url", "ms_client_id", "cf_api_key", "ram_
 pub fn defaults() -> Map<String, Value> {
     let v = json!({
         "server_url": "",
-        "ms_client_id": "",
+        "ms_client_id": option_env!("FL_MS_CLIENT_ID").unwrap_or(""),
         "cf_api_key": "",
         "ram_mb": 4096,
         "java_path": "",
@@ -25,6 +25,10 @@ pub fn load(dir: &Path) -> Map<String, Value> {
                 data.insert(k, v);
             }
         }
+    }
+    // Пустое значение в файле не должно затирать Client ID, зашитый при сборке.
+    if data.get("ms_client_id").and_then(|v| v.as_str()).unwrap_or("").is_empty() {
+        data.insert("ms_client_id".into(), json!(option_env!("FL_MS_CLIENT_ID").unwrap_or("")));
     }
     data
 }
