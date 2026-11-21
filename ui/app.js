@@ -1394,11 +1394,11 @@ async function pollLoop() {
   }
 }
 
+const SPLASH_FROM = Date.now();
 function hideSplash() {
   const s = document.getElementById('splash');
   if (!s) return;
-  s.classList.add('out');
-  setTimeout(() => s.remove(), 450);
+  setTimeout(() => { s.classList.add('out'); setTimeout(() => s.remove(), 450); }, Math.max(0, 1300 - (Date.now() - SPLASH_FROM)));
 }
 (async function init() {
   try { await refresh(); } catch (e) {
