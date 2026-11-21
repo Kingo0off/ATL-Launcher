@@ -401,3 +401,7 @@ canvas.bad { opacity: .2; }
 @media (prefers-reduced-motion: reduce) { #fx .bat svg, #fx .pumpkin, #fx .mist { animation: none; } }
 .fx-halloween .btn.play { position: relative; overflow: visible; }
 .fx-halloween .btn.play::before { content: "🎃"; position: absolute; top: -15px; right: -9px; font-size: 22px; pointer-events: none; }
+
+.rail-btn .dot.run { background: #4ade80; animation: dot-run 1.6s ease-in-out infinite; }
+@keyframes dot-run { 0%, 100% { box-shadow: 0 0 0 3px var(--rail), 0 0 0 3px rgba(74,222,128,0); } 50% { box-shadow: 0 0 0 3px var(--rail), 0 0 10px 4px rgba(74,222,128,.6); } }
+@media (prefers-reduced-motion: reduce) { .rail-btn .dot.run { animation: none; } }

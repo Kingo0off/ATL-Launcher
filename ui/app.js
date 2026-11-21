@@ -245,7 +245,7 @@ function playBtn(it, size = '') {
 function renderRail(r) {
   const acc = curAccount();
   const running = S.st.instances.some(i => i.phase === 'running' || i.phase === 'preparing');
-  const item = (name, icon, label, on) => `<button class="rail-btn ${on ? 'on' : ''}" data-act="nav" data-to="${name}" title="${label}">${ic(icon, 22)}<span>${label}</span>${(name === 'library' && running) || (name === 'settings' && S.upd && S.upd.available) ? '<i class="dot"></i>' : ''}</button>`;
+  const item = (name, icon, label, on) => `<button class="rail-btn ${on ? 'on' : ''}" data-act="nav" data-to="${name}" title="${label}">${ic(icon, 22)}<span>${label}</span>${name === 'library' && running ? '<i class="dot run" title="Игра запущена"></i>' : name === 'settings' && S.upd && S.upd.available ? '<i class="dot" title="Есть обновление"></i>' : ''}</button>`;
   $('#rail').innerHTML = `${LOGO}
     ${item('library', 'grid', 'Библиотека', r.name === 'library' || r.name === 'i')}
     ${item('discover', 'compass', 'Обзор', r.name === 'discover')}
