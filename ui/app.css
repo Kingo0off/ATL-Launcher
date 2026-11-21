@@ -406,3 +406,19 @@ canvas.bad { opacity: .2; }
 .rail-btn .dot.run { background: #4ade80; animation: dot-run 1.6s ease-in-out infinite; }
 @keyframes dot-run { 0%, 100% { box-shadow: 0 0 0 3px var(--rail), 0 0 0 3px rgba(74,222,128,0); } 50% { box-shadow: 0 0 0 3px var(--rail), 0 0 10px 4px rgba(74,222,128,.6); } }
 @media (prefers-reduced-motion: reduce) { .rail-btn .dot.run { animation: none; } }
+
+/* значки сборок: сетка выбора и своя картинка */
+.icon-side { display: grid; gap: 6px; justify-items: start; }
+.glyph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 8px; margin-top: 12px; }
+.gl { aspect-ratio: 1; border-radius: 12px; border: 1px solid var(--line); background: linear-gradient(145deg, var(--p-bg), var(--p-bg2)); display: grid; place-items: center; padding: 0; cursor: pointer; }
+.gl:hover { border-color: var(--accent-2); }
+.gl.on { outline: 2px solid var(--accent-2); outline-offset: 1px; }
+.gl .pix { width: 60%; height: 60%; filter: none; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.sw { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; padding: 0; cursor: pointer; }
+.sw.on { border-color: var(--text); }
+.pix-img { image-rendering: auto; }
+.card-art .pix-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: none; }
+.hero .pix-img { width: 92px; height: 92px; border-radius: 18px; object-fit: cover; filter: none; }
+.inst-icon { overflow: hidden; }
+.inst-icon .pix-img { width: 100%; height: 100%; object-fit: cover; filter: none; }

@@ -116,6 +116,67 @@ function art(seed) {
   return `<svg class="pix" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">${cells}</svg>`;
 }
 
+/* ---- значки сборок: набор, цвет или своя картинка ---- */
+const GLYPHS = {
+  cube: ['Куб', (a, b, c) => `<path d="M12 2l9 5-9 5-9-5z" fill="${c}"/><path d="M12 12v10l-9-5V7z" fill="${b}"/><path d="M12 12v10l9-5V7z" fill="${a}"/>`],
+  pick: ['Кирка', (a, b, c) => `<g transform="rotate(-45 12 12)"><rect x="10.8" y="4" width="2.4" height="18" rx="1.2" fill="${b}"/><path d="M2 9c3-6 17-6 20 0-3-2.5-17-2.5-20 0z" fill="${a}"/></g>`],
+  sword: ['Меч', (a, b, c) => `<g transform="rotate(45 12 12)"><rect x="10.5" y="1" width="3" height="14" rx="1" fill="${c}"/><rect x="6.5" y="14.5" width="11" height="2.4" rx="1.2" fill="${a}"/><rect x="10.7" y="17" width="2.6" height="5" rx="1" fill="${b}"/></g>`],
+  shield: ['Щит', (a, b) => `<path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="${b}"/><path d="M12 2l8 3v6c0 5-3.5 9-8 11z" fill="${a}"/>`],
+  gem: ['Кристалл', (a, b, c) => `<path d="M6 3h12l4 6-10 12L2 9z" fill="${b}"/><path d="M6 3h12l4 6H2z" fill="${c}"/><path d="M12 21L8 9h8z" fill="${a}"/>`],
+  heart: ['Сердце', a => `<path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="${a}"/>`],
+  flame: ['Огонь', (a, b, c) => `<path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-4 3-7 1 1 1.5 2 1.5 3 1-1.5 2-4 1.5-8z" fill="${a}"/><circle cx="12" cy="15.5" r="3" fill="${c}"/>`],
+  star: ['Звезда', a => `<polygon points="12,2 14.9,8.6 22,9.3 16.6,14 18.2,21 12,17.3 5.8,21 7.4,14 2,9.3 9.1,8.6" fill="${a}"/>`],
+  bolt: ['Молния', a => `<polygon points="13,2 4,14 11,14 10,22 20,9 13,9" fill="${a}"/>`],
+  crown: ['Корона', (a, b) => `<path d="M3 18h18l1-11-5 4-5-7-5 7-5-4z" fill="${a}"/><rect x="3" y="18" width="18" height="3" rx="1" fill="${b}"/>`],
+  tree: ['Дерево', (a, b) => `<path d="M12 2l6 8h-3l5 7H4l5-7H6z" fill="${a}"/><rect x="10.5" y="17" width="3" height="5" fill="${b}"/>`],
+  moon: ['Луна', a => `<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z" fill="${a}"/>`],
+  potion: ['Зелье', (a, b, c) => `<path d="M9 2h6v2h-1v5l5 9a2 2 0 0 1-1.8 3H6.8A2 2 0 0 1 5 18l5-9V4H9z" fill="${c}"/><path d="M6.7 15h10.6l1.7 3a2 2 0 0 1-1.8 3H6.8A2 2 0 0 1 5 18z" fill="${a}"/>`],
+  rocket: ['Ракета', (a, b, c) => `<path d="M12 2c4 2.5 6 6.5 6 11l-2.5 3h-7L6 13c0-4.5 2-8.5 6-11z" fill="${c}"/><circle cx="12" cy="10" r="2" fill="${b}"/><path d="M6 13l-3 4 4 .5zM18 13l3 4-4 .5z" fill="${a}"/><path d="M10 18.5h4L12 22z" fill="${a}"/>`],
+  house: ['Дом', (a, b, c) => `<path d="M12 3l10 9h-3v9H5v-9H2z" fill="${b}"/><rect x="10" y="14" width="4" height="7" fill="${c}"/>`],
+  paw: ['Лапа', a => `<g fill="${a}"><circle cx="6" cy="10" r="2.2"/><circle cx="10" cy="5.5" r="2.2"/><circle cx="14" cy="5.5" r="2.2"/><circle cx="18" cy="10" r="2.2"/><path d="M12 11c3.5 0 6 3 6 5.5 0 2-1.8 3-3.2 2.6-1-.3-1.8-.6-2.8-.6s-1.8.3-2.8.6C8.8 19.5 6 18.5 6 16.5 6 14 8.5 11 12 11z"/></g>`],
+  planet: ['Планета', (a, b, c) => `<circle cx="12" cy="12" r="6" fill="${b}"/><path d="M2 14c0-2 4-4.5 10-4.5s10 2.5 10 4.5-4 4.5-10 4.5S2 16 2 14z" fill="none" stroke="${c}" stroke-width="1.6" transform="rotate(-20 12 12)"/>`],
+  castle: ['Замок', (a, b, c) => `<path d="M3 21V6h4v3h2V6h6v3h2V6h4v15z" fill="${b}"/><path d="M10 21v-5a2 2 0 0 1 4 0v5z" fill="${c}"/>`],
+  gamepad: ['Геймпад', (a, b, c) => `<rect x="2" y="7" width="20" height="11" rx="5.5" fill="${b}"/><path d="M7 10v5M4.5 12.5h5" stroke="${c}" stroke-width="2" stroke-linecap="round"/><circle cx="15.5" cy="11.5" r="1.4" fill="${a}"/><circle cx="18.5" cy="13.5" r="1.4" fill="${a}"/>`],
+  drop: ['Капля', (a, b, c) => `<path d="M12 2.5c4 5 7 8 7 12a7 7 0 0 1-14 0c0-4 3-7 7-12z" fill="${a}"/><circle cx="9.5" cy="15" r="1.8" fill="${c}"/>`],
+  ghost: ['Призрак', (a, b, c) => `<path d="M5 21V11a7 7 0 0 1 14 0v10l-3.5-2.5L12 21l-3.5-2.5z" fill="${c}"/><circle cx="9.5" cy="11" r="1.5" fill="${b}"/><circle cx="14.5" cy="11" r="1.5" fill="${b}"/>`],
+  mushroom: ['Гриб', (a, b, c) => `<path d="M3 12a9 8 0 0 1 18 0z" fill="${a}"/><path d="M9 12h6v6a3 3 0 0 1-6 0z" fill="${c}"/><circle cx="8" cy="9" r="1.5" fill="${c}"/><circle cx="14" cy="7" r="1.5" fill="${c}"/><circle cx="16.5" cy="10" r="1.2" fill="${c}"/>`],
+};
+const glyphSvg = (id, p) => `<svg class="pix glyph" viewBox="0 0 24 24" aria-hidden="true">${GLYPHS[id][1](p[2], p[3], p[4])}</svg>`;
+const iconMatch = icon => /^g:([a-z0-9_-]+):(\d+)$/.exec(icon || '');
+function iconPal(it) { const m = iconMatch(it.icon); return m ? PALETTES[+m[2] % PALETTES.length] : pal(it.icon_seed); }
+const iconVars = it => palVars(iconPal(it));
+function iconArt(it, preview) {
+  if (it.icon === 'custom') return `<img class="pix pix-img" src="${preview || `api/insticon?key=${enc(it.key)}&v=${it.icon_v || 0}`}" alt="" data-seed="${esc(it.icon_seed)}">`;
+  const m = iconMatch(it.icon);
+  if (m && GLYPHS[m[1]]) return glyphSvg(m[1], PALETTES[+m[2] % PALETTES.length]);
+  return art(it.icon_seed);
+}
+/* Своя картинка: обрезаем до квадрата 256×256 в окне, на сервер уходит готовый PNG. */
+async function squareIcon(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error('Не удалось прочитать картинку')); i.src = url; });
+    const w = img.naturalWidth, h = img.naturalHeight;
+    if (!w || !h) throw new Error('Пустая картинка');
+    const side = Math.min(w, h), c = document.createElement('canvas');
+    c.width = c.height = 256;
+    c.getContext('2d').drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, 256, 256);
+    const blob = await new Promise(ok => c.toBlob(ok, 'image/png'));
+    if (!blob) throw new Error('Не удалось обработать картинку');
+    return { blob, data: c.toDataURL('image/png') };
+  } finally { URL.revokeObjectURL(url); }
+}
+function renderIconPicker() {
+  const c = S.ic, p = PALETTES[c.pal], cur = iconMatch(c.icon);
+  const prev = $('#s-icon');
+  if (!prev) return;
+  prev.style.cssText = `width:72px;height:72px;border-radius:18px;${iconVars(c)}`;
+  prev.innerHTML = iconArt(c, c.preview);
+  const tile = (act, attrs, style, inner, on, title) => `<button type="button" class="gl ${on ? 'on' : ''}" style="${style}" data-act="${act}" ${attrs} title="${title}" aria-pressed="${on}">${inner}</button>`;
+  $('#icon-picker').innerHTML = `<div class="glyph-grid" style="${palVars(p)}">${tile('icon-pixel', '', palVars(pal(c.icon_seed)), art(c.icon_seed), c.icon === '', 'Пиксельный')}${Object.entries(GLYPHS).map(([id, g]) => tile('icon-glyph', `data-g="${id}"`, '', glyphSvg(id, p), !!cur && cur[1] === id, g[0])).join('')}</div>
+    <div class="swatches" role="group" aria-label="Цвет значка">${PALETTES.map((q, i) => `<button type="button" class="sw ${i === c.pal ? 'on' : ''}" data-act="icon-pal" data-p="${i}" style="background:linear-gradient(135deg,${q[2]},${q[3]})" aria-label="Цвет ${i + 1}"></button>`).join('')}</div>`;
+}
+
 /* ====================== состояние ====================== */
 const S = {
   st: null, tasks: {}, prog: {}, nid: 0,
@@ -280,8 +341,8 @@ function cardHTML(it) {
   const btn = running
     ? `<button class="card-play stop always" data-act="stop" data-key="${k}" title="Остановить">${ic('stop', 18)}</button>`
     : prep ? '' : `<button class="card-play" data-act="play" data-key="${k}" title="Играть">${ic('play', 20)}</button>`;
-  return `<article class="card" style="${palVars(pal(it.icon_seed))}" data-act="open" data-key="${k}" tabindex="0" role="link" aria-label="${esc(it.name)}">
-    <div class="card-art">${art(it.icon_seed)}${tag}${live}${btn}</div>
+  return `<article class="card" style="${iconVars(it)}" data-act="open" data-key="${k}" tabindex="0" role="link" aria-label="${esc(it.name)}">
+    <div class="card-art">${iconArt(it)}${tag}${live}${btn}</div>
     <div class="card-body"><h3 title="${esc(it.name)}">${esc(it.name)}</h3>${chips(it)}<div class="meta">${ic('clock', 13)}${esc(meta)}</div></div></article>`;
 }
 function gridHTML() {
@@ -301,7 +362,7 @@ function heroHTML() {
   if (S.lib.q) return '';
   const it = [...S.st.instances].filter(i => i.last_played).sort((a, b) => b.last_played - a.last_played)[0];
   if (!it) return '';
-  return `<section class="hero" style="${palVars(pal(it.icon_seed))}"><div>${art(it.icon_seed)}</div>
+  return `<section class="hero" style="${iconVars(it)}"><div>${iconArt(it)}</div>
     <div><div class="over">Продолжить</div><h2>${esc(it.name)}</h2>${chips(it)}</div>${playBtn(it, 'lg')}</section>`;
 }
 function libraryHTML() {
@@ -329,9 +390,9 @@ function renderInstance(r) {
     ? [['overview', 'Обзор'], ['mods', 'Моды'], ['add', 'Добавить'], ['worlds', 'Миры'], ['log', 'Журнал'], ['settings', 'Настройки']]
     : [['overview', 'Обзор'], ['mods', 'Моды'], ['worlds', 'Миры'], ['log', 'Журнал']];
   const tab = tabs.some(t => t[0] === r.tab) ? r.tab : 'overview';
-  $('#view').innerHTML = `<div class="page" style="${palVars(pal(it.icon_seed))}">
+  $('#view').innerHTML = `<div class="page" style="${iconVars(it)}">
     <button class="back" data-act="nav" data-to="library">${ic('back')} Библиотека</button>
-    <div class="inst-head"><div class="inst-icon">${art(it.icon_seed)}</div>
+    <div class="inst-head"><div class="inst-icon">${iconArt(it)}</div>
       <div class="inst-title"><h1>${esc(it.name)}</h1>${chips(it)}</div><div class="inst-actions" id="inst-actions">${instActions(it)}</div></div>
     <div class="tabs" role="tablist">${tabs.map(([k, t]) => `<button class="tab ${k === tab ? 'on' : ''}" role="tab" data-act="tab" data-tab="${k}">${t}${k === 'mods' && it.kind === 'local' ? `<span class="n">${it.mods}</span>` : ''}</button>`).join('')}</div>
     <div id="tabbody"></div></div>`;
@@ -453,10 +514,14 @@ async function tabLog(it, el) {
 
 /* ---- настройки сборки ---- */
 async function tabSettings(it, el) {
-  S.seed = it.icon_seed;
+  const gm = iconMatch(it.icon);
+  S.ic = { key: it.key, icon: it.icon || '', icon_seed: it.icon_seed, icon_v: it.icon_v || 0, preview: '',
+    pal: gm ? +gm[2] % PALETTES.length : Math.max(0, PALETTES.indexOf(pal(it.icon_seed))) };
   el.innerHTML = `<div class="form-narrow"><section class="panel">
     <label class="fld"><span>Название</span><input type="text" id="s-name" value="${esc(it.name)}" maxlength="60"></label>
-    <div class="fld"><span>Значок</span><div class="icon-pick"><div class="inst-icon" id="s-icon" style="width:72px;height:72px;border-radius:18px;${palVars(pal(it.icon_seed))}">${art(it.icon_seed)}</div><button class="btn sm" data-act="reroll-icon">Другой значок</button></div></div>
+    <div class="fld"><span>Значок</span><div class="icon-pick"><div class="inst-icon" id="s-icon"></div>
+      <div class="icon-side"><button class="btn sm" data-act="icon-upload">${ic('upload', 15)} Своя картинка</button><input type="file" id="icon-file" accept="image/*" hidden><p class="hint">Любая картинка, её обрежет до квадрата</p></div></div>
+      <div id="icon-picker"></div></div>
     <div id="vp"></div>
     <div class="fld"><span>Память, МБ</span><input type="number" id="s-ram" min="0" step="256" value="${it.ram_mb || ''}" placeholder="Общая: ${S.st.settings.ram_mb}">
       <div class="ram-presets">${[2048, 4096, 6144, 8192].map(v => `<button class="btn sm" data-act="ram-preset" data-v="${v}">${v / 1024} ГБ</button>`).join('')}<button class="btn sm ghost" data-act="ram-preset" data-v="">Общая</button></div></div>
@@ -465,6 +530,7 @@ async function tabSettings(it, el) {
     <div style="display:flex;justify-content:flex-end"><button class="btn primary" data-act="save-settings" data-id="${esc(it.id)}">Сохранить</button></div></section>
     <section class="danger-zone"><div><h2 class="sec" style="margin:0">Удалить сборку</h2><p>Вместе с мирами, модами и настройками. Это нельзя отменить.</p></div><button class="btn danger" data-act="inst-delete" data-key="${esc(it.key)}">${ic('trash')} Удалить</button></section></div>`;
   S.vp = versionPicker($('#vp'), { mc: it.mc_version, loader: it.loader });
+  renderIconPicker();
 }
 
 /* ====================== выбор версий ====================== */
@@ -1132,13 +1198,28 @@ const A = {
     if (!await confirmBox({ title: 'Удалить сборку?', text: `«${esc(it.name)}» будет удалена вместе с мирами, модами и настройками. Это нельзя отменить.`, ok: 'Удалить', danger: true })) return;
     await api('instances.delete', { id: it.id }); await refresh(); toast('Сборка удалена', 'ok'); go('library');
   },
-  'reroll-icon': () => { S.seed = Math.random().toString(16).slice(2, 10); $('#s-icon').style.cssText = `width:72px;height:72px;border-radius:18px;${palVars(pal(S.seed))}`; $('#s-icon').innerHTML = art(S.seed); },
+  'icon-pixel': () => { S.ic.icon = ''; S.ic.preview = ''; renderIconPicker(); },
+  'icon-glyph': el => { S.ic.icon = `g:${el.dataset.g}:${S.ic.pal}`; S.ic.preview = ''; renderIconPicker(); },
+  'icon-pal': el => { S.ic.pal = +el.dataset.p; const m = iconMatch(S.ic.icon); S.ic.icon = `g:${m ? m[1] : 'cube'}:${S.ic.pal}`; S.ic.preview = ''; renderIconPicker(); },
+  'icon-upload': () => {
+    const f = $('#icon-file');
+    f.onchange = async () => {
+      const file = f.files[0]; f.value = ''; if (!file) return;
+      try {
+        const { blob, data } = await squareIcon(file);
+        const d = await upload('icon', { key: S.ic.key }, new File([blob], 'icon.png', { type: 'image/png' }));
+        S.ic.icon = 'custom'; S.ic.preview = data; S.ic.icon_v = d.instance ? d.instance.icon_v : 0;
+        await refresh(); renderIconPicker(); toast('Своя картинка загружена', 'ok');
+      } catch (e) { toast(e.message, 'error'); }
+    };
+    f.click();
+  },
   'ram-preset': el => { $('#s-ram').value = el.dataset.v; },
   'save-settings': async el => {
     el.disabled = true;
     try {
       const v = S.vp.get();
-      await api('instances.update', { id: el.dataset.id, name: $('#s-name').value, ...v, ram_mb: $('#s-ram').value || 0, java_args: $('#s-jvm').value, notes: $('#s-notes').value, icon_seed: S.seed });
+      await api('instances.update', { id: el.dataset.id, name: $('#s-name').value, ...v, ram_mb: $('#s-ram').value || 0, java_args: $('#s-jvm').value, notes: $('#s-notes').value, icon: S.ic.icon, icon_seed: S.ic.icon_seed });
       await refresh(); toast('Сохранено', 'ok'); render({ soft: true, hard: true });
     } catch (e) { toast(e.message, 'error'); } finally { el.disabled = false; }
   },

@@ -120,6 +120,9 @@ impl Store {
         let mut m = inst.as_object().cloned().ok_or("Неверные данные сборки")?;
         let old_id = m.remove("id").and_then(|v| v.as_str().map(String::from)).unwrap_or_default();
         m.remove("icon_seed");
+        if m.get("icon").and_then(|v| v.as_str()) == Some("custom") {
+            m.remove("icon");
+        }
         m.remove("publish");
         m.insert("name".into(), json!(new_name));
         let new = self.save(&Value::Object(m))?;

@@ -210,9 +210,33 @@ pub enum Out {
 }
 
 /// Методы, которые можно вызывать запросом GET (остальные только POST).
-pub const GET_OK: [&str; 9] = ["state", "poll", "log", "modicon", "ping", "latest_log", "shot", "skinimg", "skinurl"];
+pub const GET_OK: [&str; 10] = ["state", "poll", "log", "modicon", "ping", "latest_log", "shot", "skinimg", "skinurl", "insticon"];
 pub const SUBFOLDERS: [&str; 9] = ["", "mods", "saves", "logs", "resourcepacks", "shaderpacks", "screenshots", "backups", "config"];
-pub const MAX_UPLOAD: [(&str, u64); 3] = [("import", 4 << 30), ("content", 1 << 29), ("skin", 1 << 20)];
+pub const MAX_UPLOAD: [(&str, u64); 4] = [("import", 4 << 30), ("content", 1 << 29), ("skin", 1 << 20), ("icon", 2 << 20)];
+
+/// Значок сборки: пусто (пиксельный по зерну), `custom` (своя картинка) или `g:<значок>:<цвет>`.
+pub fn valid_icon(s: &str) -> bool {
+    if s.is_empty() || s == "custom" {
+        return true;
+    }
+    let parts: Vec<&str> = s.split(':').collect();
+    parts.len() == 3
+        && parts[0] == "g"
+        && (1..=16).contains(&parts[1].len())
+        && parts[1].chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '-')
+        && (1..=2).contains(&parts[2].len())
+        && parts[2].chars().all(|c| c.is_ascii_digit())
+}
+
+/// Ширина и высота PNG по заголовку (None, если это не PNG).
+pub fn png_dims(d: &[u8]) -> Option<(u32, u32)> {
+    if d.len() < 24 || &d[..8] != b"\x89PNG\r\n\x1a\n" || &d[12..16] != b"IHDR" {
+        return None;
+    }
+    let w = u32::from_be_bytes([d[16], d[17], d[18], d[19]]);
+    let h = u32::from_be_bytes([d[20], d[21], d[22], d[23]]);
+    Some((w, h))
+}
 
 fn pstr<'a>(p: &'a Value, k: &str) -> Result<&'a str, ApiError> {
     p.get(k)
@@ -282,10 +306,25 @@ impl Api {
             Some(s) if !s.is_empty() => s.to_string(),
             _ => id.to_string(),
         };
+        let ipath = self.icon_path(id);
+        let custom = inst["icon"].as_str() == Some("custom");
+        let (icon, icon_v) = if custom && ipath.is_file() {
+            let v = std::fs::metadata(&ipath)
+                .and_then(|m| m.modified())
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(1);
+            ("custom".to_string(), v)
+        } else if custom {
+            (String::new(), 0)
+        } else {
+            (inst["icon"].as_str().unwrap_or("").to_string(), 0)
+        };
         json!({
             "key": key, "kind": "local", "id": id, "name": inst["name"], "mc_version": inst["mc_version"],
             "loader_label": loader_label(&loader), "loader": loader,
-            "icon_seed": seed, "ram_mb": inst["ram_mb"].as_i64().unwrap_or(0),
+            "icon": icon, "icon_v": icon_v, "icon_seed": seed, "ram_mb": inst["ram_mb"].as_i64().unwrap_or(0),
             "java_args": inst["java_args"].as_str().unwrap_or(""), "notes": inst["notes"].as_str().unwrap_or(""),
             "last_played": st["last_played"].as_i64().unwrap_or(0), "playtime_s": st["playtime_s"].as_i64().unwrap_or(0),
             "mods": count_files(&gdir, "mods", &[".jar", ".jar.disabled"]),
@@ -296,6 +335,10 @@ impl Api {
     fn items(&self) -> Vec<Value> {
         let stats = self.stats();
         self.store.list().iter().map(|i| self.item_local(i, &stats)).collect()
+    }
+
+    fn icon_path(&self, id: &str) -> PathBuf {
+        self.dir.join("local").join(id).join("icon.png")
     }
 
     fn local_ref(&self, key: &str) -> Result<Ref, ApiError> {
@@ -552,6 +595,13 @@ impl Api {
                 Ok(match mods::mod_icon(&r.gdir, pstr(p, "file")?)? {
                     Some(b) => Out::Image(b, "image/png"),
                     None => Out::Missing,
+                })
+            }
+            "insticon" => {
+                let r = self.local_ref(pstr(p, "key")?)?;
+                Ok(match std::fs::read(self.icon_path(&r.id)) {
+                    Ok(b) => Out::Image(b, "image/png"),
+                    Err(_) => Out::Missing,
                 })
             }
             "shot" => {
@@ -1006,6 +1056,19 @@ impl Api {
         if let Some(r) = p.get("ram_mb") {
             m.insert("ram_mb".into(), json!(clean_ram(r)?));
         }
+        if let Some(v) = p.get("icon") {
+            let t = v.as_str().unwrap_or("");
+            if !valid_icon(t) {
+                return Err("Неверный значок".into());
+            }
+            if t == "custom" && !self.icon_path(id).is_file() {
+                return Err("Своя картинка не загружена".into());
+            }
+            if t != "custom" {
+                let _ = std::fs::remove_file(self.icon_path(id));
+            }
+            m.insert("icon".into(), json!(t));
+        }
         for k in ["java_args", "icon_seed", "notes"] {
             if let Some(v) = p.get(k) {
                 let text = v.as_str().unwrap_or("");
@@ -1039,6 +1102,21 @@ impl Api {
                 let stem = Path::new(&name).file_stem().and_then(|n| n.to_str()).unwrap_or("Скин");
                 let variant = if popt(q, "variant").is_empty() { "classic" } else { popt(q, "variant") };
                 Ok(json!({"skin": crate::skins::add(&self.dir, stem, &data, variant)?}))
+            }
+            "icon" => {
+                let r = self.local_ref(pstr(q, "key")?)?;
+                let data = std::fs::read(tmp).map_err(|e| e.to_string())?;
+                match png_dims(&data) {
+                    Some((w, h)) if w > 0 && h > 0 && w <= 1024 && h <= 1024 => {}
+                    _ => return Err("Нужна картинка PNG не больше 1024×1024".into()),
+                }
+                std::fs::write(self.icon_path(&r.id), &data).map_err(|e| format!("Не удалось сохранить значок: {}", e))?;
+                let mut inst = self.store.get(&r.id).ok_or("Сборка не найдена")?;
+                if let Some(m) = inst.as_object_mut() {
+                    m.insert("icon".into(), json!("custom"));
+                }
+                let saved = self.store.save(&inst)?;
+                Ok(json!({"instance": self.item_local(&saved, &self.stats())}))
             }
             "import" => {
                 if !lower.ends_with(".mrpack") && !lower.ends_with(".zip") {
