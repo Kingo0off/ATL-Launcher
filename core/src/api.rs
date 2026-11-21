@@ -225,7 +225,6 @@ pub struct Api {
     settings: Arc<Mutex<Map<String, Value>>>,
     ms_flow: Mutex<Option<Arc<MsFlow>>>,
     updates: Mutex<HashMap<String, Vec<Value>>>,
-    share: Mutex<Option<crate::share::Share>>,
     pub endpoints: Endpoints,
     cache: Mutex<HashMap<String, (Instant, Value)>>,
     run: Arc<RunState>,
@@ -235,7 +234,7 @@ impl Api {
     pub fn new(dir: PathBuf) -> Api {
         let s = settings::load(&dir);
         let _ = std::fs::create_dir_all(dir.join("tmp"));
-        Api { store: Store::new(dir.clone()), dir, settings: Arc::new(Mutex::new(s)), ms_flow: Mutex::new(None), updates: Mutex::new(HashMap::new()), share: Mutex::new(None), endpoints: Endpoints::default(), cache: Mutex::new(HashMap::new()), run: Arc::new(RunState::default()) }
+        Api { store: Store::new(dir.clone()), dir, settings: Arc::new(Mutex::new(s)), ms_flow: Mutex::new(None), updates: Mutex::new(HashMap::new()), endpoints: Endpoints::default(), cache: Mutex::new(HashMap::new()), run: Arc::new(RunState::default()) }
     }
 
     pub fn tmp_dir(&self) -> PathBuf {
@@ -320,13 +319,6 @@ impl Api {
         let accs = accounts::load(&self.dir);
         let sel = self.settings.lock().ok().and_then(|s| s.get("last_account").and_then(|v| v.as_str().map(String::from))).unwrap_or_default();
         accs.iter().find(|a| a["uuid"].as_str() == Some(sel.as_str())).or_else(|| accs.first()).cloned()
-    }
-
-    fn share_status(&self) -> Value {
-        match self.share.lock().ok().and_then(|g| g.as_ref().map(|s| s.url.clone())) {
-            Some(url) => json!({"running": true, "url": url}),
-            None => json!({"running": false, "url": ""}),
-        }
     }
 
     fn cf_key(&self) -> String {
@@ -689,23 +681,6 @@ impl Api {
             "skins.delete" => {
                 crate::skins::remove(&self.dir, pstr(p, "id")?)?;
                 Ok(json!({}))
-            }
-            "share.status" => Ok(self.share_status()),
-            "share.start" => {
-                {
-                    let mut g = self.share.lock().map_err(|_| "внутренняя ошибка")?;
-                    if g.is_none() {
-                        let exe = std::env::current_exe().map_err(|e| format!("Не удалось найти файл лаунчера: {}", e))?;
-                        *g = Some(crate::share::start(exe, "FriendLauncher.exe")?);
-                    }
-                }
-                Ok(self.share_status())
-            }
-            "share.stop" => {
-                if let Some(s) = self.share.lock().map_err(|_| "внутренняя ошибка")?.take() {
-                    s.stop();
-                }
-                Ok(self.share_status())
             }
             "modrinth.search" | "curseforge.search" => {
                 let ptype = if popt(p, "type").is_empty() { "mod" } else { popt(p, "type") };

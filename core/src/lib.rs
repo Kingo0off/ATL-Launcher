@@ -14,7 +14,6 @@ pub mod net;
 pub mod paths;
 pub mod server;
 pub mod settings;
-pub mod share;
 pub mod shots;
 pub mod skins;
 pub mod util;

@@ -818,22 +818,8 @@ function settingsHTML() {
       ${f('st-java', 'Путь к Java', s.java_path, 'Оставь пустым — лаунчер сам скачает нужную Java.', 'text', 'Автоматически')}</section>
     <section class="panel"><h2 class="sec">Вход через Microsoft</h2>${f('st-ms', 'Client ID приложения Azure', s.ms_client_id, 'Нужен только для входа через Microsoft. Как получить — в README, раздел «Вход через Microsoft».', 'text', '00000000-0000-0000-0000-000000000000')}</section>
     <section class="panel"><h2 class="sec">CurseForge</h2>${f('st-cf', 'Ключ API CurseForge', s.cf_api_key || '', 'Бесплатный ключ нужен для поиска и установки с CurseForge: console.curseforge.com → API keys. Если автор мода запретил загрузку из сторонних лаунчеров, файл придётся скачать на сайте.', 'password', '$2a$10$…')}</section>
-    <section class="panel"><h2 class="sec">Раздать лаунчер друзьям</h2><p class="hint" style="margin-bottom:12px">Друзья в той же сети (Wi-Fi, Radmin, Hamachi, ZeroTier) открывают адрес в браузере и скачивают этот лаунчер. Пока раздача включена, окно лаунчера держи открытым.</p><div id="share-box"><span class="spin"></span></div></section>
     <section class="panel"><h2 class="sec">Данные</h2><p class="hint" style="margin-bottom:12px;overflow-wrap:anywhere">${esc(S.st.data_dir)}</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn sm" data-act="open-app" data-what="data">${ic('folder', 15)} Папка данных</button><button class="btn sm" data-act="open-app" data-what="exports">${ic('folder', 15)} Папка экспорта</button></div></section></div></div>`;
-}
-
-/* ====================== раздача лаунчера по сети ====================== */
-async function loadShare(st) {
-  const box = $('#share-box'); if (!box) return;
-  try {
-    const d = st || await api('share.status');
-    if (!$('#share-box')) return;
-    box.innerHTML = d.running
-      ? `<div class="code-box" style="font-size:18px;overflow-wrap:anywhere">${esc(d.url)}</div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn sm" data-act="copy-text" data-text="${esc(d.url)}">${ic('copy', 15)} Скопировать адрес</button><button class="btn sm" data-act="share-toggle">Остановить раздачу</button></div>
-        <p class="hint" style="margin-top:10px">Если страница у друга не открывается, разреши FriendLauncher в брандмауэре Windows для частной сети.</p>`
-      : `<button class="btn sm primary" data-act="share-toggle">Включить раздачу</button>`;
-  } catch (e) { box.innerHTML = `<p class="err-text">${esc(e.message)}</p>`; }
 }
 
 /* ====================== аккаунты ====================== */
@@ -977,9 +963,6 @@ const A = {
       await api('instances.update', { id: el.dataset.id, name: $('#s-name').value, ...v, ram_mb: $('#s-ram').value || 0, java_args: $('#s-jvm').value, notes: $('#s-notes').value, icon_seed: S.seed });
       await refresh(); toast('Сохранено', 'ok'); render({ soft: true, hard: true });
     } catch (e) { toast(e.message, 'error'); } finally { el.disabled = false; }
-  },
-  'share-toggle': async () => {
-    try { const cur = await api('share.status'); await loadShare(await api(cur.running ? 'share.stop' : 'share.start')); } catch (e) { toast(e.message, 'error'); }
   },
   'save-app-settings': async () => {
     const d = await api('settings.set', { ram_mb: +$('#st-ram').value, java_path: $('#st-java').value, ms_client_id: $('#st-ms').value, cf_api_key: $('#st-cf').value });
@@ -1165,7 +1148,7 @@ function render(opts = {}) {
   else if (r.name === 'discover') { v.innerHTML = discoverHTML(); browseInto($('#browse'), null); }
   else if (r.name === 'shots') { v.innerHTML = shotsHTML(); if (S.shots?.list && opts.soft) drawShots(); else loadShots(); }
   else if (r.name === 'skins') { v.innerHTML = skinsHTML(); if (S.sk?.list && opts.soft) drawSkins(); else loadSkins(); }
-  else if (r.name === 'settings') { v.innerHTML = settingsHTML(); loadShare(); }
+  else if (r.name === 'settings') v.innerHTML = settingsHTML();
   else if (r.name === 'i') renderInstance(r);
   else go('library');
   if (!opts.soft) $('#main').scrollTop = 0;
