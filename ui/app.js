@@ -254,7 +254,7 @@ function renderRail(r) {
     ${item('network', 'globe', 'Сеть', r.name === 'network')}
     ${item('settings', 'sliders', 'Настройки', r.name === 'settings')}
     <div class="grow"></div>
-    <button class="acct-btn ${acc ? '' : 'empty'}" data-act="acct-menu" title="${acc ? esc(acc.name) : 'Добавить аккаунт'}">${acc ? avatar(acc) : ic('user', 22)}</button>`;
+    <button class="acct-btn ${acc ? '' : 'no-acct'}" data-act="acct-menu" title="${acc ? esc(acc.name) : 'Добавить аккаунт'}">${acc ? avatar(acc) : ic('user', 22)}</button>`;
   hydrateAvatars($('#rail'));
 }
 
@@ -990,7 +990,7 @@ async function loadNetwork(st) {
       <p class="hint" style="margin-top:10px">Если мир не появился, нажми «Прямое подключение» и введи адрес <b>localhost${d.listen_port === 25565 ? '' : ':' + d.listen_port}</b>.</p>`}
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><button class="btn" data-act="net-leave">Выйти из комнаты</button></div></section>${how}`;
   } else {
-    box.innerHTML = `<section class="panel"><h2 class="sec">Создать комнату</h2><p class="hint" style="margin-bottom:12px">Ты хозяин: друзья зайдут в твой мир. Нужен интернет.</p><button class="btn primary" data-act="net-host">${ic('plus', 16)} Создать комнату</button></section>
+    box.innerHTML = `<section class="panel"><h2 class="sec">Создать комнату</h2><p class="hint" style="margin-bottom:12px">Ты хост: друзья зайдут в твой мир. Нужен интернет.</p><button class="btn primary" data-act="net-host">${ic('plus', 16)} Создать комнату</button></section>
       <section class="panel"><h2 class="sec">Подключиться к другу</h2><label class="fld"><span>Код комнаты</span><input type="text" id="net-code" placeholder="Вставь код от друга" autocomplete="off" spellcheck="false"></label><button class="btn primary" data-act="net-join">Подключиться</button></section>${how}`;
   }
   clearTimeout(S.netTimer);

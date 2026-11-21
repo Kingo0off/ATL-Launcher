@@ -1,5 +1,5 @@
 //! «Комнаты»: игра по сети через туннель, без VPN-драйвера и без прав администратора.
-//! Хозяин открывает мир для сети и создаёт комнату, друг вводит код: на его компьютере
+//! Хост открывает мир для сети и создаёт комнату, друг вводит код: на его компьютере
 //! появляется локальный адрес, а мир показывается в «Сетевой игре». Связь идёт напрямую
 //! (QUIC, пробитие NAT), а если не выходит, через публичные реле iroh. Трафик шифруется.
 use iroh::{
@@ -153,7 +153,7 @@ impl ProtocolHandler for Tunnel {
     }
 }
 
-/// Хозяин: создаёт комнату. `target` возвращает порт мира, открытого для сети.
+/// Хост: создаёт комнату. `target` возвращает порт мира, открытого для сети.
 pub fn host(target: Arc<dyn Fn() -> Option<u16> + Send + Sync>) -> Result<Active, String> {
     let rt = runtime()?;
     let info = Arc::new(Info::default());
@@ -177,17 +177,35 @@ pub fn host(target: Arc<dyn Fn() -> Option<u16> + Send + Sync>) -> Result<Active
 
 /// Гость: подключается к комнате по коду и поднимает локальный адрес для игры.
 pub fn join(code: &str) -> Result<Active, String> {
-    let id: EndpointId = code.trim().parse().map_err(|_| "Неверный код комнаты. Скопируй его у хозяина целиком.".to_string())?;
+    let id: EndpointId = code.trim().parse().map_err(|_| "Неверный код комнаты. Скопируй его у хоста целиком.".to_string())?;
     let rt = runtime()?;
     let info = Arc::new(Info::default());
     let info2 = info.clone();
     rt.block_on(async move {
         info2.set_status("connecting");
         let ep = Endpoint::bind(presets::N0).await.map_err(|e| format!("Не удалось открыть сеть: {}", e))?;
-        let conn = match tokio::time::timeout(Duration::from_secs(30), ep.connect(id, ALPN)).await {
-            Err(_) => return Err("Хозяин не отвечает. Комната должна быть открыта, а у хозяина запущен лаунчер.".to_string()),
-            Ok(Err(e)) => return Err(format!("Не удалось подключиться к комнате: {}", e)),
-            Ok(Ok(c)) => c,
+        // Сначала даём подключиться к серверам-посредникам, потом ищем хоста.
+        let _ = tokio::time::timeout(Duration::from_secs(10), ep.online()).await;
+        let mut last = String::new();
+        let mut conn_opt = None;
+        for _ in 0..2 {
+            match tokio::time::timeout(Duration::from_secs(25), ep.connect(id, ALPN)).await {
+                Err(_) => last = "хост не отвечает за 25 секунд".to_string(),
+                Ok(Err(e)) => last = e.to_string(),
+                Ok(Ok(c)) => {
+                    conn_opt = Some(c);
+                    break;
+                }
+            }
+        }
+        let conn = match conn_opt {
+            Some(c) => c,
+            None => {
+                return Err(format!(
+                    "Не удалось подключиться к комнате ({}). Проверь: комната у хоста открыта и его лаунчер запущен; код скопирован целиком; у вас одинаковая версия лаунчера (Настройки → Обновления); интернет не блокирует соединения (попробуй выключить VPN/антивирусный фильтр).",
+                    last
+                ))
+            }
         };
         let listener = match TcpListener::bind(("0.0.0.0", 25565)).await {
             Ok(l) => l,
@@ -228,7 +246,7 @@ pub fn join(code: &str) -> Result<Active, String> {
         tokio::spawn(async move {
             let _ep = ep;
             conn.closed().await;
-            info3.set_error("Связь с хозяином потеряна. Нажми «Выйти» и подключись снова.");
+            info3.set_error("Связь с хостом потеряна. Нажми «Выйти» и подключись снова.");
             info3.set_status("lost");
         });
         Ok(())
