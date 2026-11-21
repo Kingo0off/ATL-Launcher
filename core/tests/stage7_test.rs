@@ -29,5 +29,4 @@ fn theme_is_validated() {
     assert_eq!(clean_theme(&json!(null)).unwrap(), json!({}));
     assert_eq!(clean_theme(&json!({"event": "halloween"})).unwrap(), json!({"event": "halloween"}));
     assert!(clean_theme(&json!({"event": "easter"})).is_err());
-})).is_err());
 }
