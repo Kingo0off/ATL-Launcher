@@ -353,3 +353,39 @@ canvas.bad { opacity: .2; }
 .color-row small { display: block; color: var(--muted); }
 .color-row input[type=color] { width: 54px; height: 34px; padding: 2px; border: 1px solid var(--line); border-radius: 9px; background: var(--s1); cursor: pointer; }
 @media (max-width: 860px) { .set-wrap { grid-template-columns: 1fr; } .set-nav { grid-auto-flow: column; position: static; overflow-x: auto; } }
+
+/* ---------- праздничные украшения ---------- */
+#fx { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
+#fx .flake { position: absolute; top: -12px; width: var(--s); height: var(--s); border-radius: 50%; background: #fff; box-shadow: 0 0 6px rgba(255,255,255,.7); animation: fx-fall var(--t) linear infinite; }
+@keyframes fx-fall { to { transform: translate(var(--w), calc(100vh + 20px)); } }
+#fx .garland { position: absolute; top: 0; left: 0; right: 0; height: 26px; border-top: 2px solid rgba(120,130,150,.5); }
+#fx .garland i { position: absolute; width: 9px; height: 13px; margin-left: -4px; border-radius: 50% 50% 55% 55%; background: var(--c); box-shadow: 0 0 10px 2px var(--c); animation: fx-twinkle 1.6s ease-in-out infinite alternate; animation-delay: var(--d); }
+@keyframes fx-twinkle { from { opacity: .35; } to { opacity: 1; } }
+#fx .web { position: absolute; top: 0; width: 150px; height: 150px; opacity: .45; }
+#fx .web.tl { left: 0; } #fx .web.tr { right: 0; transform: scaleX(-1); }
+#fx .web svg { width: 100%; height: 100%; }
+#fx .spider { position: absolute; top: 0; right: 150px; display: flex; flex-direction: column; align-items: center; animation: fx-drop 7s ease-in-out infinite alternate; }
+#fx .spider i { width: 1px; height: 60px; background: rgba(207,211,230,.6); }
+#fx .spider span { font-size: 22px; margin-top: -4px; }
+@keyframes fx-drop { from { transform: translateY(-40px); } to { transform: translateY(70px); } }
+#fx .bat { position: absolute; top: var(--y); left: -40px; font-size: 22px; animation: fx-bat var(--t) linear infinite; }
+@keyframes fx-bat { 0% { transform: translate(0, 0); } 25% { transform: translate(30vw, 30px); } 50% { transform: translate(60vw, -20px); } 75% { transform: translate(90vw, 25px); } 100% { transform: translate(115vw, 0); } }
+#fx .pumpkin { position: absolute; left: 76px; bottom: 6px; font-size: 30px; filter: drop-shadow(0 0 10px rgba(255,150,40,.7)); }
+#fx .heart { position: absolute; bottom: -30px; font-size: var(--s); animation: fx-rise var(--t) linear infinite; opacity: .8; }
+@keyframes fx-rise { to { transform: translate(var(--w), calc(-100vh - 40px)); } }
+@media (prefers-reduced-motion: reduce) { #fx .flake, #fx .heart, #fx .bat { display: none; } #fx .spider, #fx .garland i { animation: none; } }
+
+/* сугробы на кнопках */
+.fx-newyear .btn.primary, .fx-newyear .btn.play, .fx-newyear .card, .fx-newyear .rail-btn.on { position: relative; }
+.fx-newyear .btn.primary::after, .fx-newyear .btn.play::after, .fx-newyear .card::after, .fx-newyear .rail-btn.on::after {
+  content: ""; position: absolute; top: -1px; left: 5px; right: 5px; height: 9px; background: #f4f8ff; pointer-events: none; z-index: 2;
+  clip-path: polygon(0 0, 100% 0, 100% 50%, 93% 100%, 82% 55%, 68% 100%, 54% 60%, 40% 100%, 26% 55%, 12% 100%, 0 50%); }
+.fx-newyear .card::after { left: 0; right: 0; }
+/* тыква и сердечки у кнопки «Играть» */
+.fx-halloween .btn.play, .fx-valentine .btn.play { position: relative; overflow: visible; }
+.fx-halloween .btn.play::before { content: "🎃"; position: absolute; top: -15px; right: -9px; font-size: 22px; pointer-events: none; }
+.fx-valentine .btn.play::before { content: "💖"; position: absolute; top: -13px; right: -9px; font-size: 20px; pointer-events: none; }
+.fx-halloween .card::after { content: "🕸️"; position: absolute; top: 3px; right: 6px; font-size: 18px; opacity: .6; pointer-events: none; }
+.fx-halloween .card { position: relative; }
+.fx-valentine .btn.primary::before { content: "❤"; position: absolute; top: -8px; right: -5px; font-size: 14px; color: #ff6b8b; pointer-events: none; }
+.fx-valentine .btn.primary { position: relative; }

@@ -58,6 +58,17 @@ pub fn clean_theme(v: &Value) -> Result<Value, String> {
                 }
                 out.insert(k.clone(), json!(t.to_lowercase()));
             }
+            "events" => {
+                let arr = val.as_array().ok_or("events должен быть списком")?;
+                let mut ids = Vec::new();
+                for x in arr {
+                    let id = x.as_str().ok_or("Неверное событие")?;
+                    if matches!(id, "newyear" | "halloween" | "valentine") && !ids.contains(&id) {
+                        ids.push(id);
+                    }
+                }
+                out.insert(k.clone(), json!(ids));
+            }
             "auto" => {
                 out.insert(k.clone(), json!(val.as_bool().ok_or("auto должно быть да/нет")?));
             }

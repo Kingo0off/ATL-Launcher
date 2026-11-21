@@ -825,30 +825,25 @@ const THEMES = {
   light: { name: 'Светлая', accent: '#6d4aff', play: '#f59e0b', bg: '#f4f5fa', text: '#1b1e2b' },
 };
 const EVENTS = {
-  newyear: { name: 'Новый год', emoji: '🎄', from: [12, 15], to: [1, 10], accent: '#ef4444', play: '#fcd34d', bg: '#0b1a14' },
-  halloween: { name: 'Хэллоуин', emoji: '🎃', from: [10, 20], to: [11, 2], accent: '#fb923c', play: '#a3e635', bg: '#120d1a' },
-  valentine: { name: 'День влюблённых', emoji: '💝', from: [2, 10], to: [2, 15], accent: '#f43f5e', play: '#fda4af', bg: '#1a0f14' },
-  defender: { name: '23 февраля', emoji: '🎖️', from: [2, 20], to: [2, 24], accent: '#84cc16', play: '#facc15', bg: '#10140c' },
-  womens: { name: '8 марта', emoji: '🌷', from: [3, 5], to: [3, 9], accent: '#e879f9', play: '#fde68a', bg: '#18101c' },
-  spring: { name: 'Весна', emoji: '🌱', from: [3, 1], to: [5, 31], accent: '#86efac', play: '#fde047', bg: '#0f1712' },
-  summer: { name: 'Лето', emoji: '☀️', from: [6, 1], to: [8, 31], accent: '#22d3ee', play: '#fb923c', bg: '#0a1820' },
-  autumn: { name: 'Осень', emoji: '🍂', from: [9, 1], to: [11, 30], accent: '#f59e0b', play: '#f87171', bg: '#1a130d' },
-  winter: { name: 'Зима', emoji: '❄️', from: [12, 1], to: [2, 28], accent: '#93c5fd', play: '#e0f2fe', bg: '#0d131c' },
+  newyear: { name: 'Новый год', emoji: '🎄', from: [12, 15], to: [1, 10], desc: 'Падает снег, на кнопках сугробы, сверху мигает гирлянда' },
+  halloween: { name: 'Хэллоуин', emoji: '🎃', from: [10, 20], to: [11, 2], desc: 'Паутина в углах, паук на нити, летучие мыши и тыква у кнопки «Играть»' },
+  valentine: { name: 'День влюблённых', emoji: '💝', from: [2, 10], to: [2, 15], desc: 'Летят сердечки, на кнопках сердечки' },
 };
-Object.assign(THEMES, EVENTS);
 const inRange = (e, d) => { const v = (d.getMonth() + 1) * 100 + d.getDate(), a = e.from[0] * 100 + e.from[1], b = e.to[0] * 100 + e.to[1]; return a <= b ? v >= a && v <= b : v >= a || v <= b; };
-// Самые узкие по датам события важнее сезонов (список упорядочен: праздники раньше сезонов)
-function activeEvent(d = new Date()) { return Object.entries(EVENTS).find(([, e]) => inRange(e, d)); }
+function activeEvents(t, d = new Date()) {
+  const on = new Set(Array.isArray(t && t.events) ? t.events : []);
+  if (t && t.auto) for (const [id, e] of Object.entries(EVENTS)) if (inRange(e, d)) on.add(id);
+  return [...on].filter(id => EVENTS[id]);
+}
 const THEME_VARS = ['--bg', '--rail', '--s1', '--s2', '--s3', '--line', '--line-soft', '--line-hi', '--text', '--muted', '--faint', '--accent', '--accent-2', '--accent-bg', '--accent-ink', '--play', '--play-2', '--play-ink'];
 const hex2rgb = h => { h = String(h).replace('#', ''); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) || 0); };
 const rgb2hex = c => '#' + c.map(x => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')).join('');
 const mixc = (a, b, t) => { const x = hex2rgb(a), y = hex2rgb(b); return rgb2hex(x.map((v, i) => v + (y[i] - v) * t)); };
 const lumOf = h => { const [r, g, b] = hex2rgb(h).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
 function themeBase(t) {
-  if (t && t.auto) { const ev = activeEvent(); if (ev) t = { preset: ev[0] }; }
-  return { ...THEMES.slate, ...(t && THEMES[t.preset] ? THEMES[t.preset] : {}), ...(t || {}) }; }
+ return { ...THEMES.slate, ...(t && THEMES[t.preset] ? THEMES[t.preset] : {}), ...(t || {}) }; }
 function applyTheme(t) {
-  if (t && t.auto) { const ev = activeEvent(); if (ev) t = { preset: ev[0] }; }
+  applyFx(t);
   const root = document.documentElement;
   THEME_VARS.forEach(k => root.style.removeProperty(k));
   root.style.colorScheme = '';
@@ -877,6 +872,34 @@ function applyTheme(t) {
   set('--play-ink', lumOf(c.play) > .4 ? '#2b1d00' : '#ffffff');
   root.style.colorScheme = light ? 'light' : 'dark';
 }
+/* ====================== праздничные украшения ====================== */
+function applyFx(t) {
+  const root = document.documentElement, ids = activeEvents(t);
+  [...root.classList].filter(c => c.startsWith('fx-')).forEach(c => root.classList.remove(c));
+  ids.forEach(id => root.classList.add('fx-' + id));
+  let fx = document.getElementById('fx');
+  if (!ids.length) { if (fx) fx.remove(); return; }
+  if (!fx) { fx = document.createElement('div'); fx.id = 'fx'; fx.setAttribute('aria-hidden', 'true'); document.body.appendChild(fx); }
+  const r = (a, b) => a + Math.random() * (b - a);
+  const web = '<svg viewBox="0 0 120 120"><g stroke="#cfd3e6" stroke-width="1" fill="none"><path d="M0 0H120M0 0L110 45M0 0L85 85M0 0L45 110M0 0V120"/><path d="M22 0Q20 20 0 22M46 0Q42 42 0 46M72 0Q64 64 0 72M100 0Q88 88 0 100"/></g></svg>';
+  let h = '';
+  if (ids.includes('newyear')) {
+    const cols = ['#ff5a5a', '#ffd34d', '#5ad17a', '#5ab0ff'], n = Math.ceil(innerWidth / 44);
+    h += '<div class="garland">' + Array.from({ length: n }, (_, i) => `<i style="left:${(i + .5) * 100 / n}%;--c:${cols[i % 4]};--d:${(i % 5) * .35}s;top:${6 + Math.sin(i * Math.PI / n * 6) * 3 + 3}px"></i>`).join('') + '</div>';
+    h += Array.from({ length: 36 }, (_, i) => `<b class="flake" style="left:${r(0, 100)}%;--s:${r(3, 8)}px;--t:${r(9, 20)}s;--w:${r(-40, 40)}px;animation-delay:${-r(0, 20)}s;opacity:${r(.5, .95)}"></b>`).join('');
+  }
+  if (ids.includes('halloween')) {
+    h += `<div class="web tl">${web}</div><div class="web tr">${web}</div>`;
+    h += '<div class="spider"><i></i><span>🕷️</span></div>';
+    h += '<span class="bat" style="--y:12%;--t:19s;animation-delay:-3s">🦇</span><span class="bat" style="--y:30%;--t:27s;animation-delay:-14s">🦇</span>';
+    h += '<span class="pumpkin">🎃</span>';
+  }
+  if (ids.includes('valentine')) {
+    h += Array.from({ length: 22 }, () => `<b class="heart" style="left:${r(0, 100)}%;--s:${r(12, 26)}px;--t:${r(8, 16)}s;--w:${r(-30, 30)}px;animation-delay:${-r(0, 16)}s">${Math.random() < .5 ? '❤' : '💗'}</b>`).join('');
+  }
+  fx.innerHTML = h;
+}
+const fxKeep = () => { const t = S.theme || {}, o = {}; if (t.events) o.events = t.events; if (t.auto) o.auto = true; return o; };
 const saveThemeSoon = debounce(() => {
   api('settings.set', { theme: S.theme || {} }).then(d => { S.st.settings = d.settings; }).catch(e => toast(e.message, 'error'));
 }, 400);
@@ -898,11 +921,11 @@ function settingsHTML() {
     const t = S.theme || {}, c = themeBase(t);
     const row = (key, label, hint) => `<div class="color-row"><div><b>${label}</b><small>${hint}</small></div><input type="color" id="th-${key}" value="${esc(c[key] || (key === 'text' ? (lumOf(c.bg) > .45 ? '#1b1e2b' : '#e9eaf2') : '#000000'))}" aria-label="${label}"></div>`;
     const tile = ([id, p]) => `<button class="preset ${t.preset === id && !t.accent && !t.play && !t.bg && !t.text ? 'on' : ''}" data-act="theme-preset" data-id="${id}"><div class="pv" style="background:${p.bg}"><i style="background:${p.accent}"></i><i style="background:${p.play}"></i></div><span>${p.emoji ? p.emoji + ' ' : ''}${esc(p.name)}</span></button>`;
-    const ev = activeEvent();
-    body = `<section class="panel"><h2 class="sec">Готовые темы</h2><div class="presets">${Object.entries(THEMES).filter(([id]) => !EVENTS[id]).map(tile).join('')}</div></section>
-      <section class="panel"><h2 class="sec">Праздники и времена года</h2>
-        <label class="color-row" style="cursor:pointer"><div><b>Менять тему автоматически</b><small>${ev ? 'Сейчас: ' + ev[1].emoji + ' ' + esc(ev[1].name) : 'Сейчас нет подходящего события — тема остаётся обычной'}. Новый год, Хэллоуин, 8 марта, весна, лето и другие.</small></div><input type="checkbox" id="th-auto" ${t.auto ? 'checked' : ''}></label>
-        <div class="presets" style="margin-top:14px">${Object.entries(EVENTS).map(tile).join('')}</div></section>
+    const evs = activeEvents(t), manual = new Set(t.events || []);
+    body = `<section class="panel"><h2 class="sec">Готовые темы</h2><div class="presets">${Object.entries(THEMES).map(tile).join('')}</div></section>
+      <section class="panel"><h2 class="sec">Праздничные украшения</h2>
+        <div class="colors">${Object.entries(EVENTS).map(([id, e]) => `<label class="color-row" style="cursor:pointer"><div><b>${e.emoji} ${esc(e.name)}</b><small>${esc(e.desc)}</small></div><input type="checkbox" id="th-ev-${id}" ${manual.has(id) ? 'checked' : ''}></label>`).join('')}
+        <label class="color-row" style="cursor:pointer"><div><b>Включать сами по датам</b><small>${evs.length ? 'Сейчас идёт: ' + evs.map(i => EVENTS[i].emoji + ' ' + esc(EVENTS[i].name)).join(', ') : 'Сейчас подходящих праздников нет'}. Новый год — с 15 декабря по 10 января, Хэллоуин — с 20 октября по 2 ноября, 14 февраля — с 10 по 15 февраля.</small></div><input type="checkbox" id="th-auto" ${t.auto ? 'checked' : ''}></label></div></section>
       <section class="panel"><h2 class="sec">Свои цвета</h2><div class="colors">
         ${row('accent', 'Основной цвет', 'Кнопки, выделение, значки')}
         ${row('play', 'Кнопка «Играть»', 'Цвет главной кнопки')}
@@ -1119,8 +1142,8 @@ const A = {
     setTimeout(async () => { await refresh(); }, 1500);
   },
   'set-tab': el => { S.setTab = el.dataset.tab; render(); },
-  'theme-preset': el => { setTheme({ preset: el.dataset.id }); render(); },
-  'theme-reset': () => { setTheme({}); render(); toast('Цвета сброшены', 'ok'); },
+  'theme-preset': el => { setTheme({ ...fxKeep(), preset: el.dataset.id }); render(); },
+  'theme-reset': () => { setTheme(fxKeep()); render(); toast('Цвета сброшены', 'ok'); },
   'acct-menu': (el, e) => { e.stopPropagation(); acctMenu($('.acct-btn')); },
   'acct-select': async el => { await api('accounts.select', { uuid: el.dataset.uuid }); await refresh(); closePop(); render({ soft: true }); },
   'acct-remove': async el => { await api('accounts.remove', { uuid: el.dataset.uuid, type: el.dataset.type }); await refresh(); closePop(); render({ soft: true }); },
@@ -1240,6 +1263,7 @@ document.addEventListener('input', e => {
   else if (id === 'mod-q') { S.modq = e.target.value; drawMods(); }
   else if (id === 'br-q') debouncedBr(e.target.value);
   else if (id === 'th-auto') { const t = { ...(S.theme || {}) }; if (e.target.checked) t.auto = true; else delete t.auto; setTheme(t); render(); }
+  else if (id && id.startsWith('th-ev-')) { const t = { ...(S.theme || {}) }, ev = new Set(t.events || []), k = id.slice(6); e.target.checked ? ev.add(k) : ev.delete(k); if (ev.size) t.events = [...ev]; else delete t.events; setTheme(t); }
   else if (id && id.startsWith('th-')) { const k = id.slice(3); setTheme({ ...(S.theme || {}), [k]: e.target.value }); }
 });
 const debouncedBr = debounce(v => { if (S.br) { S.br.q = v.trim(); brSearch(true); } }, 350);
