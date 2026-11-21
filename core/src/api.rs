@@ -1031,6 +1031,8 @@ impl Api {
             if let Some(v) = p.get(k) {
                 if k == "ram_mb" {
                     new.insert(k.to_string(), v.clone());
+                } else if k == "theme" {
+                    new.insert(k.to_string(), settings::clean_theme(v)?);
                 } else {
                     let text = match v {
                         Value::String(t) => t.trim().to_string(),

@@ -44,20 +44,26 @@ fn version_lists() {
     f.insert("/manifest".into(), json!({"versions":[{"id":"1.21","type":"release"},{"id":"24w01a","type":"snapshot"},{"id":"1.20.1","type":"release"}]}).to_string().into_bytes());
     f.insert("/fabric/versions/loader/1.20.1".into(), json!([{"loader":{"version":"0.15.0-beta.1"}},{"loader":{"version":"0.14.9"}}]).to_string().into_bytes());
     f.insert("/forge.xml".into(), b"<metadata><versions><version>1.20.1-47.0.1</version><version>1.20.1-47.1.0</version><version>1.19-41.0.0</version></versions></metadata>".to_vec());
-    f.insert("/neo.xml".into(), b"<metadata><versions><version>20.1.1</version><version>20.1.2-beta</version><version>20.1.3</version><version>21.0.5</version></versions></metadata>".to_vec());
+    f.insert("/neo_legacy.xml".into(), b"<metadata><versions><version>1.20.1-47.1.0</version><version>1.20.1-47.1.5</version><version>1.19-41.0.0</version></versions></metadata>".to_vec());
+    f.insert("/neo.xml".into(), b"<metadata><versions><version>20.4.1</version><version>20.4.2-beta</version><version>20.4.3</version><version>21.0.5</version><version>26.1.0.0-beta</version><version>26.1.0.1-beta</version><version>26.1.0.0-alpha.2+snapshot-1</version></versions></metadata>".to_vec());
     let base = mock(f);
     let ep = Endpoints {
         manifest: format!("{}/manifest", base),
         fabric: format!("{}/fabric", base),
         forge_meta: format!("{}/forge.xml", base),
         neoforge_meta: format!("{}/neo.xml", base),
+        neoforge_legacy_meta: format!("{}/neo_legacy.xml", base),
         ..Endpoints::default()
     };
     assert_eq!(mojang::mc_versions(&ep, false).unwrap(), vec!["1.21", "1.20.1"]);
     assert_eq!(mojang::mc_versions(&ep, true).unwrap().len(), 3);
     assert_eq!(loaders::loader_versions(&ep, "fabric", "1.20.1").unwrap(), vec!["0.14.9", "0.15.0-beta.1"]);
     assert_eq!(loaders::loader_versions(&ep, "forge", "1.20.1").unwrap(), vec!["47.1.0", "47.0.1"]);
-    assert_eq!(loaders::loader_versions(&ep, "neoforge", "1.20.1").unwrap(), vec!["20.1.3", "20.1.1", "20.1.2-beta"]);
+    assert_eq!(loaders::loader_versions(&ep, "neoforge", "1.20.1").unwrap(), vec!["47.1.5", "47.1.0"]);
+    assert_eq!(loaders::loader_versions(&ep, "neoforge", "1.20.4").unwrap(), vec!["20.4.3", "20.4.1", "20.4.2-beta"]);
+    assert_eq!(loaders::loader_versions(&ep, "neoforge", "1.21").unwrap(), vec!["21.0.5"]);
+    assert_eq!(loaders::loader_versions(&ep, "neoforge", "26.1").unwrap(), vec!["26.1.0.1-beta", "26.1.0.0-beta"]);
+    assert_eq!(loaders::loader_versions(&ep, "neoforge", "26.1-snapshot-1").unwrap(), vec!["26.1.0.0-alpha.2+snapshot-1"]);
     assert!(loaders::loader_versions(&ep, "vanilla", "1.20.1").unwrap().is_empty());
 }
 

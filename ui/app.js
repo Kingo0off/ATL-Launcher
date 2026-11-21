@@ -131,7 +131,11 @@ const goInst = (key, tab) => go(`i/${enc(key)}${tab ? '/' + tab : ''}`);
 const getItem = key => S.st.instances.find(i => i.key === key);
 const locals = () => S.st.instances.filter(i => i.kind === 'local');
 const curAccount = () => S.st.accounts.find(a => a.uuid === S.st.selected) || S.st.accounts[0] || null;
-async function refresh() { S.st = await apiGet('state'); }
+async function refresh() {
+  S.st = await apiGet('state');
+  const th = S.st.settings && S.st.settings.theme && typeof S.st.settings.theme === 'object' ? S.st.settings.theme : {};
+  if (JSON.stringify(th) !== S.themeApplied) { S.themeApplied = JSON.stringify(th); S.theme = th; applyTheme(th); }
+}
 
 /* ====================== всплывающие элементы ====================== */
 function toast(text, kind = 'info') {
@@ -810,17 +814,87 @@ async function skinRun(fn, okText) {
 }
 
 /* ====================== настройки приложения ====================== */
+/* ====================== тема оформления ====================== */
+const THEMES = {
+  slate: { name: 'Сланец', accent: '#9b7cff', play: '#ffcf5a', bg: '#0f1117' },
+  ocean: { name: 'Океан', accent: '#38bdf8', play: '#fbbf24', bg: '#0b141c' },
+  forest: { name: 'Лес', accent: '#4ade80', play: '#f59e0b', bg: '#0e1511' },
+  sunset: { name: 'Закат', accent: '#fb7185', play: '#fdba74', bg: '#1a1014' },
+  sakura: { name: 'Сакура', accent: '#f472b6', play: '#fde047', bg: '#171018' },
+  graphite: { name: 'Графит', accent: '#d4d4d8', play: '#facc15', bg: '#121212' },
+  light: { name: 'Светлая', accent: '#6d4aff', play: '#f59e0b', bg: '#f4f5fa', text: '#1b1e2b' },
+};
+const THEME_VARS = ['--bg', '--rail', '--s1', '--s2', '--s3', '--line', '--line-soft', '--line-hi', '--text', '--muted', '--faint', '--accent', '--accent-2', '--accent-bg', '--accent-ink', '--play', '--play-2', '--play-ink'];
+const hex2rgb = h => { h = String(h).replace('#', ''); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) || 0); };
+const rgb2hex = c => '#' + c.map(x => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')).join('');
+const mixc = (a, b, t) => { const x = hex2rgb(a), y = hex2rgb(b); return rgb2hex(x.map((v, i) => v + (y[i] - v) * t)); };
+const lumOf = h => { const [r, g, b] = hex2rgb(h).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
+function themeBase(t) { return { ...THEMES.slate, ...(t && THEMES[t.preset] ? THEMES[t.preset] : {}), ...(t || {}) }; }
+function applyTheme(t) {
+  const root = document.documentElement;
+  THEME_VARS.forEach(k => root.style.removeProperty(k));
+  root.style.colorScheme = '';
+  if (!t || !Object.keys(t).length) return;
+  const c = themeBase(t), light = lumOf(c.bg) > .45, cc = light ? '#000000' : '#ffffff';
+  const text = c.text || (light ? '#1b1e2b' : '#e9eaf2');
+  const set = (k, v) => root.style.setProperty(k, v);
+  set('--bg', c.bg);
+  set('--rail', mixc(c.bg, '#000000', light ? .06 : .35));
+  set('--s1', mixc(c.bg, cc, light ? .03 : .04));
+  set('--s2', mixc(c.bg, cc, light ? .06 : .08));
+  set('--s3', mixc(c.bg, cc, light ? .1 : .15));
+  set('--line', mixc(c.bg, cc, light ? .14 : .17));
+  set('--line-soft', mixc(c.bg, cc, light ? .08 : .11));
+  set('--line-hi', mixc(c.bg, cc, light ? .22 : .26));
+  set('--text', text);
+  set('--muted', mixc(text, c.bg, .42));
+  set('--faint', mixc(text, c.bg, .62));
+  set('--accent', c.accent);
+  set('--accent-2', mixc(c.accent, light ? '#000000' : '#ffffff', light ? .25 : .35));
+  const [r, g, b] = hex2rgb(c.accent);
+  set('--accent-bg', `rgba(${r}, ${g}, ${b}, .14)`);
+  set('--accent-ink', lumOf(c.accent) > .4 ? '#10131c' : '#ffffff');
+  set('--play', c.play);
+  set('--play-2', mixc(c.play, '#000000', .12));
+  set('--play-ink', lumOf(c.play) > .4 ? '#2b1d00' : '#ffffff');
+  root.style.colorScheme = light ? 'light' : 'dark';
+}
+const saveThemeSoon = debounce(() => {
+  api('settings.set', { theme: S.theme || {} }).then(d => { S.st.settings = d.settings; }).catch(e => toast(e.message, 'error'));
+}, 400);
+function setTheme(t, save = true) { S.theme = t; applyTheme(t); if (save) saveThemeSoon(); }
+
+/* ====================== настройки ====================== */
+const SET_TABS = [['game', 'Игра', 'sliders'], ['accounts', 'Аккаунты и сервисы', 'globe'], ['look', 'Внешний вид', 'shirt'], ['data', 'Данные', 'folder']];
 function settingsHTML() {
-  const s = S.st.settings;
+  const s = S.st.settings, tab = S.setTab || 'game';
   const f = (id, label, val, hint = '', type = 'text', ph = '') => `<label class="fld"><span>${label}</span><input type="${type}" id="${id}" value="${esc(val)}" placeholder="${esc(ph)}">${hint ? `<small>${hint}</small>` : ''}</label>`;
-  return `<div class="page"><div class="page-head"><div><h1>Настройки</h1><p class="sub">Версия ${esc(S.st.version)}</p></div><div class="head-actions"><button class="btn primary" data-act="save-app-settings">Сохранить</button></div></div>
-    <div class="form-narrow" style="display:grid;gap:18px">
-    <section class="panel"><h2 class="sec">Игра</h2>${f('st-ram', 'Память по умолчанию, МБ', s.ram_mb, 'Можно переопределить в настройках каждой сборки.', 'number')}
-      ${f('st-java', 'Путь к Java', s.java_path, 'Оставь пустым — лаунчер сам скачает нужную Java.', 'text', 'Автоматически')}</section>
-    <section class="panel"><h2 class="sec">Вход через Microsoft</h2>${f('st-ms', 'Client ID приложения Azure', s.ms_client_id, 'Нужен только для входа через Microsoft. Как получить — в README, раздел «Вход через Microsoft».', 'text', '00000000-0000-0000-0000-000000000000')}</section>
-    <section class="panel"><h2 class="sec">CurseForge</h2>${f('st-cf', 'Ключ API CurseForge', s.cf_api_key || '', 'Бесплатный ключ нужен для поиска и установки с CurseForge: console.curseforge.com → API keys. Если автор мода запретил загрузку из сторонних лаунчеров, файл придётся скачать на сайте.', 'password', '$2a$10$…')}</section>
-    <section class="panel"><h2 class="sec">Данные</h2><p class="hint" style="margin-bottom:12px;overflow-wrap:anywhere">${esc(S.st.data_dir)}</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn sm" data-act="open-app" data-what="data">${ic('folder', 15)} Папка данных</button><button class="btn sm" data-act="open-app" data-what="exports">${ic('folder', 15)} Папка экспорта</button></div></section></div></div>`;
+  let body = '';
+  if (tab === 'game') {
+    body = `<section class="panel"><h2 class="sec">Игра</h2>${f('st-ram', 'Память по умолчанию, МБ', s.ram_mb, 'Можно переопределить в настройках каждой сборки.', 'number')}
+      ${f('st-java', 'Путь к Java', s.java_path, 'Оставь пустым — лаунчер сам скачает нужную Java.', 'text', 'Автоматически')}</section>`;
+  } else if (tab === 'accounts') {
+    body = `<section class="panel"><h2 class="sec">Вход через Microsoft</h2>${f('st-ms', 'Client ID приложения Azure', s.ms_client_id, 'Нужен только для входа через Microsoft. Как получить — в README, раздел «Вход через Microsoft».', 'text', 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')}</section>
+      <section class="panel"><h2 class="sec">CurseForge</h2>${f('st-cf', 'Ключ API CurseForge', s.cf_api_key || '', 'Бесплатный ключ нужен для поиска и установки с CurseForge: console.curseforge.com → API keys.', 'text')}</section>`;
+  } else if (tab === 'look') {
+    const t = S.theme || {}, c = themeBase(t);
+    const row = (key, label, hint) => `<div class="color-row"><div><b>${label}</b><small>${hint}</small></div><input type="color" id="th-${key}" value="${esc(c[key] || (key === 'text' ? (lumOf(c.bg) > .45 ? '#1b1e2b' : '#e9eaf2') : '#000000'))}" aria-label="${label}"></div>`;
+    body = `<section class="panel"><h2 class="sec">Готовые темы</h2><div class="presets">${Object.entries(THEMES).map(([id, p]) => `<button class="preset ${t.preset === id && Object.keys(t).length === 1 ? 'on' : ''}" data-act="theme-preset" data-id="${id}"><div class="pv" style="background:${p.bg}"><i style="background:${p.accent}"></i><i style="background:${p.play}"></i></div><span>${esc(p.name)}</span></button>`).join('')}</div></section>
+      <section class="panel"><h2 class="sec">Свои цвета</h2><div class="colors">
+        ${row('accent', 'Основной цвет', 'Кнопки, выделение, значки')}
+        ${row('play', 'Кнопка «Играть»', 'Цвет главной кнопки')}
+        ${row('bg', 'Фон', 'Остальные оттенки подбираются сами')}
+        ${row('text', 'Текст', 'Цвет надписей')}</div>
+        <div style="margin-top:16px"><button class="btn sm" data-act="theme-reset">Сбросить на стандартные</button></div>
+        <p class="hint" style="margin-top:10px">Изменения применяются сразу и запоминаются.</p></section>`;
+  } else {
+    body = `<section class="panel"><h2 class="sec">Данные</h2><p class="hint" style="margin-bottom:12px;overflow-wrap:anywhere">${esc(S.st.data_dir)}</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn sm" data-act="open-app" data-what="data">${ic('folder', 15)} Папка данных</button><button class="btn sm" data-act="open-app" data-what="exports">${ic('folder', 15)} Папка экспорта</button></div></section>`;
+  }
+  const saves = tab === 'game' || tab === 'accounts';
+  return `<div class="page"><div class="page-head"><div><h1>Настройки</h1><p class="sub">Версия ${esc(S.st.version)}</p></div><div class="head-actions">${saves ? '<button class="btn primary" data-act="save-app-settings">Сохранить</button>' : ''}</div></div>
+    <div class="set-wrap"><nav class="set-nav" aria-label="Разделы настроек">${SET_TABS.map(([id, label, icon]) => `<button class="${tab === id ? 'on' : ''}" data-act="set-tab" data-tab="${id}">${ic(icon, 18)}${label}</button>`).join('')}</nav>
+    <div class="set-body">${body}</div></div></div>`;
 }
 
 /* ====================== сеть: комнаты ====================== */
@@ -1013,10 +1087,17 @@ const A = {
   'net-leave': () => netRun(() => api('room.leave')),
   'net-port': () => netRun(() => api('room.set_port', { port: +$('#net-port').value || 0 })),
   'save-app-settings': async () => {
-    const d = await api('settings.set', { ram_mb: +$('#st-ram').value, java_path: $('#st-java').value, ms_client_id: $('#st-ms').value, cf_api_key: $('#st-cf').value });
+    const body = {};
+    for (const [k, id, num] of [['ram_mb', 'st-ram', true], ['java_path', 'st-java'], ['ms_client_id', 'st-ms'], ['cf_api_key', 'st-cf']]) {
+      const el = $('#' + id); if (el) body[k] = num ? +el.value : el.value;
+    }
+    const d = await api('settings.set', body);
     S.st.settings = d.settings; toast('Настройки сохранены', 'ok');
     setTimeout(async () => { await refresh(); }, 1500);
   },
+  'set-tab': el => { S.setTab = el.dataset.tab; render(); },
+  'theme-preset': el => { setTheme({ preset: el.dataset.id }); render(); },
+  'theme-reset': () => { setTheme({}); render(); toast('Цвета сброшены', 'ok'); },
   'acct-menu': (el, e) => { e.stopPropagation(); acctMenu($('.acct-btn')); },
   'acct-select': async el => { await api('accounts.select', { uuid: el.dataset.uuid }); await refresh(); closePop(); render({ soft: true }); },
   'acct-remove': async el => { await api('accounts.remove', { uuid: el.dataset.uuid, type: el.dataset.type }); await refresh(); closePop(); render({ soft: true }); },
@@ -1135,6 +1216,7 @@ document.addEventListener('input', e => {
   if (id === 'lib-q') { S.lib.q = e.target.value; $('#grid').innerHTML = gridHTML(); $('#hero').innerHTML = heroHTML(); }
   else if (id === 'mod-q') { S.modq = e.target.value; drawMods(); }
   else if (id === 'br-q') debouncedBr(e.target.value);
+  else if (id && id.startsWith('th-')) { const k = id.slice(3); setTheme({ ...(S.theme || {}), [k]: e.target.value }); }
 });
 const debouncedBr = debounce(v => { if (S.br) { S.br.q = v.trim(); brSearch(true); } }, 350);
 document.addEventListener('change', e => {

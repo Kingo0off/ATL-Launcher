@@ -253,7 +253,11 @@ fn installer_loader(root: &Path, ep: &Endpoints, kind: &str, mc: &str, version: 
     let url = if kind == "forge" {
         format!("{0}/{1}-{2}/forge-{1}-{2}-installer.jar", ep.forge_maven, mc, version)
     } else {
-        format!("{0}/{1}/neoforge-{1}-installer.jar", ep.neoforge_maven, version)
+        if loaders::neoforge_is_legacy(mc) {
+            format!("{0}/{1}-{2}/forge-{1}-{2}-installer.jar", ep.neoforge_legacy_maven, mc, version)
+        } else {
+            format!("{0}/{1}/neoforge-{1}-installer.jar", ep.neoforge_maven, version)
+        }
     };
     let jar = root.join("installers").join(url.rsplit('/').next().unwrap_or("installer.jar"));
     log(&format!("Скачиваю установщик {}…", kind));

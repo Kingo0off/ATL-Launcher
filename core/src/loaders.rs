@@ -20,13 +20,23 @@ pub fn xml_versions(xml: &str) -> Vec<String> {
     out
 }
 
-/// NeoForge нумеруется как <minor>.<patch>.x, где MC = 1.<minor>.<patch>.
+/// Для Minecraft 1.20.1 NeoForge выпускался под именем net.neoforged:forge (версии вида 1.20.1-47.1.x).
+pub fn neoforge_is_legacy(mc: &str) -> bool {
+    mc == "1.20.1"
+}
+
+/// NeoForge нумеруется по Minecraft: 1.21.1 → 21.1.x, 1.21 → 21.0.x, а новая схема 26.1 → 26.1.0.x.
 pub fn neoforge_prefix(mc: &str) -> Option<String> {
-    let parts: Vec<&str> = mc.split('.').collect();
-    if parts.len() < 2 || parts[0] != "1" {
+    let base = mc.split('-').next().unwrap_or(mc);
+    let parts: Vec<&str> = base.split('.').collect();
+    if parts.len() < 2 || parts.iter().any(|p| p.is_empty() || !p.chars().all(|c| c.is_ascii_digit())) {
         return None;
     }
-    Some(format!("{}.{}.", parts[1], parts.get(2).copied().unwrap_or("0")))
+    Some(if parts[0] == "1" {
+        format!("{}.{}.", parts[1], parts.get(2).copied().unwrap_or("0"))
+    } else {
+        format!("{}.{}.{}.", parts[0], parts[1], parts.get(2).copied().unwrap_or("0"))
+    })
 }
 
 pub fn filter_forge(versions: &[String], mc: &str) -> Vec<String> {
@@ -41,9 +51,20 @@ pub fn filter_neoforge(versions: &[String], mc: &str) -> Vec<String> {
         Some(p) => p,
         None => return Vec::new(),
     };
-    let mut found: Vec<String> = versions.iter().filter(|v| v.starts_with(&pre)).cloned().collect();
+    // Снапшоты Minecraft (26.1-snapshot-1) имеют сборки с суффиксом +snapshot-1.
+    let snap = mc.split_once("-snapshot-").map(|(_, n)| format!("+snapshot-{}", n));
+    let mut found: Vec<String> = versions
+        .iter()
+        .filter(|v| v.starts_with(&pre))
+        .filter(|v| match &snap {
+            Some(s) => v.ends_with(s.as_str()),
+            None => !v.contains("+snapshot"),
+        })
+        .cloned()
+        .collect();
     found.reverse();
-    let (beta, stable): (Vec<String>, Vec<String>) = found.into_iter().partition(|v| v.contains("beta"));
+    let is_pre = |v: &String| v.contains("beta") || v.contains("alpha");
+    let (beta, stable): (Vec<String>, Vec<String>) = found.into_iter().partition(is_pre);
     stable.into_iter().chain(beta).collect()
 }
 
@@ -63,6 +84,7 @@ pub fn loader_versions(ep: &Endpoints, kind: &str, mc: &str) -> Result<Vec<Strin
             Ok(stable.into_iter().chain(pre).collect())
         }
         "forge" => Ok(filter_forge(&xml_versions(&get_text(&ep.forge_meta)?), mc)),
+        "neoforge" if neoforge_is_legacy(mc) => Ok(filter_forge(&xml_versions(&get_text(&ep.neoforge_legacy_meta)?), mc)),
         "neoforge" => Ok(filter_neoforge(&xml_versions(&get_text(&ep.neoforge_meta)?), mc)),
         other => Err(NetError(format!("Неизвестный загрузчик {}", other))),
     }
