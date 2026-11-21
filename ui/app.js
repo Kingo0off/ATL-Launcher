@@ -824,13 +824,31 @@ const THEMES = {
   graphite: { name: 'Графит', accent: '#d4d4d8', play: '#facc15', bg: '#121212' },
   light: { name: 'Светлая', accent: '#6d4aff', play: '#f59e0b', bg: '#f4f5fa', text: '#1b1e2b' },
 };
+const EVENTS = {
+  newyear: { name: 'Новый год', emoji: '🎄', from: [12, 15], to: [1, 10], accent: '#ef4444', play: '#fcd34d', bg: '#0b1a14' },
+  halloween: { name: 'Хэллоуин', emoji: '🎃', from: [10, 20], to: [11, 2], accent: '#fb923c', play: '#a3e635', bg: '#120d1a' },
+  valentine: { name: 'День влюблённых', emoji: '💝', from: [2, 10], to: [2, 15], accent: '#f43f5e', play: '#fda4af', bg: '#1a0f14' },
+  defender: { name: '23 февраля', emoji: '🎖️', from: [2, 20], to: [2, 24], accent: '#84cc16', play: '#facc15', bg: '#10140c' },
+  womens: { name: '8 марта', emoji: '🌷', from: [3, 5], to: [3, 9], accent: '#e879f9', play: '#fde68a', bg: '#18101c' },
+  spring: { name: 'Весна', emoji: '🌱', from: [3, 1], to: [5, 31], accent: '#86efac', play: '#fde047', bg: '#0f1712' },
+  summer: { name: 'Лето', emoji: '☀️', from: [6, 1], to: [8, 31], accent: '#22d3ee', play: '#fb923c', bg: '#0a1820' },
+  autumn: { name: 'Осень', emoji: '🍂', from: [9, 1], to: [11, 30], accent: '#f59e0b', play: '#f87171', bg: '#1a130d' },
+  winter: { name: 'Зима', emoji: '❄️', from: [12, 1], to: [2, 28], accent: '#93c5fd', play: '#e0f2fe', bg: '#0d131c' },
+};
+Object.assign(THEMES, EVENTS);
+const inRange = (e, d) => { const v = (d.getMonth() + 1) * 100 + d.getDate(), a = e.from[0] * 100 + e.from[1], b = e.to[0] * 100 + e.to[1]; return a <= b ? v >= a && v <= b : v >= a || v <= b; };
+// Самые узкие по датам события важнее сезонов (список упорядочен: праздники раньше сезонов)
+function activeEvent(d = new Date()) { return Object.entries(EVENTS).find(([, e]) => inRange(e, d)); }
 const THEME_VARS = ['--bg', '--rail', '--s1', '--s2', '--s3', '--line', '--line-soft', '--line-hi', '--text', '--muted', '--faint', '--accent', '--accent-2', '--accent-bg', '--accent-ink', '--play', '--play-2', '--play-ink'];
 const hex2rgb = h => { h = String(h).replace('#', ''); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) || 0); };
 const rgb2hex = c => '#' + c.map(x => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')).join('');
 const mixc = (a, b, t) => { const x = hex2rgb(a), y = hex2rgb(b); return rgb2hex(x.map((v, i) => v + (y[i] - v) * t)); };
 const lumOf = h => { const [r, g, b] = hex2rgb(h).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
-function themeBase(t) { return { ...THEMES.slate, ...(t && THEMES[t.preset] ? THEMES[t.preset] : {}), ...(t || {}) }; }
+function themeBase(t) {
+  if (t && t.auto) { const ev = activeEvent(); if (ev) t = { preset: ev[0] }; }
+  return { ...THEMES.slate, ...(t && THEMES[t.preset] ? THEMES[t.preset] : {}), ...(t || {}) }; }
 function applyTheme(t) {
+  if (t && t.auto) { const ev = activeEvent(); if (ev) t = { preset: ev[0] }; }
   const root = document.documentElement;
   THEME_VARS.forEach(k => root.style.removeProperty(k));
   root.style.colorScheme = '';
@@ -879,7 +897,12 @@ function settingsHTML() {
   } else if (tab === 'look') {
     const t = S.theme || {}, c = themeBase(t);
     const row = (key, label, hint) => `<div class="color-row"><div><b>${label}</b><small>${hint}</small></div><input type="color" id="th-${key}" value="${esc(c[key] || (key === 'text' ? (lumOf(c.bg) > .45 ? '#1b1e2b' : '#e9eaf2') : '#000000'))}" aria-label="${label}"></div>`;
-    body = `<section class="panel"><h2 class="sec">Готовые темы</h2><div class="presets">${Object.entries(THEMES).map(([id, p]) => `<button class="preset ${t.preset === id && Object.keys(t).length === 1 ? 'on' : ''}" data-act="theme-preset" data-id="${id}"><div class="pv" style="background:${p.bg}"><i style="background:${p.accent}"></i><i style="background:${p.play}"></i></div><span>${esc(p.name)}</span></button>`).join('')}</div></section>
+    const tile = ([id, p]) => `<button class="preset ${t.preset === id && !t.accent && !t.play && !t.bg && !t.text ? 'on' : ''}" data-act="theme-preset" data-id="${id}"><div class="pv" style="background:${p.bg}"><i style="background:${p.accent}"></i><i style="background:${p.play}"></i></div><span>${p.emoji ? p.emoji + ' ' : ''}${esc(p.name)}</span></button>`;
+    const ev = activeEvent();
+    body = `<section class="panel"><h2 class="sec">Готовые темы</h2><div class="presets">${Object.entries(THEMES).filter(([id]) => !EVENTS[id]).map(tile).join('')}</div></section>
+      <section class="panel"><h2 class="sec">Праздники и времена года</h2>
+        <label class="color-row" style="cursor:pointer"><div><b>Менять тему автоматически</b><small>${ev ? 'Сейчас: ' + ev[1].emoji + ' ' + esc(ev[1].name) : 'Сейчас нет подходящего события — тема остаётся обычной'}. Новый год, Хэллоуин, 8 марта, весна, лето и другие.</small></div><input type="checkbox" id="th-auto" ${t.auto ? 'checked' : ''}></label>
+        <div class="presets" style="margin-top:14px">${Object.entries(EVENTS).map(tile).join('')}</div></section>
       <section class="panel"><h2 class="sec">Свои цвета</h2><div class="colors">
         ${row('accent', 'Основной цвет', 'Кнопки, выделение, значки')}
         ${row('play', 'Кнопка «Играть»', 'Цвет главной кнопки')}
@@ -1216,6 +1239,7 @@ document.addEventListener('input', e => {
   if (id === 'lib-q') { S.lib.q = e.target.value; $('#grid').innerHTML = gridHTML(); $('#hero').innerHTML = heroHTML(); }
   else if (id === 'mod-q') { S.modq = e.target.value; drawMods(); }
   else if (id === 'br-q') debouncedBr(e.target.value);
+  else if (id === 'th-auto') { const t = { ...(S.theme || {}) }; if (e.target.checked) t.auto = true; else delete t.auto; setTheme(t); render(); }
   else if (id && id.startsWith('th-')) { const k = id.slice(3); setTheme({ ...(S.theme || {}), [k]: e.target.value }); }
 });
 const debouncedBr = debounce(v => { if (S.br) { S.br.q = v.trim(); brSearch(true); } }, 350);

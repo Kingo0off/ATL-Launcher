@@ -58,6 +58,9 @@ pub fn clean_theme(v: &Value) -> Result<Value, String> {
                 }
                 out.insert(k.clone(), json!(t.to_lowercase()));
             }
+            "auto" => {
+                out.insert(k.clone(), json!(val.as_bool().ok_or("auto должно быть да/нет")?));
+            }
             "preset" => {
                 let t = val.as_str().ok_or("Название темы должно быть строкой")?;
                 if t.len() > 32 || !t.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
