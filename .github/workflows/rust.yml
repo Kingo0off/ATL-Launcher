@@ -18,6 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
+      - name: Номер версии
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF_NAME#v}"; else V="3.1.${{ github.run_number }}"; fi
+          echo "FL_VERSION=$V" >> "$GITHUB_ENV"
+          echo "VERSION_TAG=v$V" >> "$GITHUB_ENV"
       - name: Тесты ядра
         run: |
           set -o pipefail
@@ -37,10 +42,14 @@ jobs:
         with:
           name: FriendLauncher-rust-exe
           path: FriendLauncher.exe
-      - name: Релиз (по тегу v*)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Релиз (из него лаунчер сам берёт обновления)
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.VERSION_TAG }}
+          target_commitish: ${{ github.sha }}
+          name: FriendLauncher ${{ env.FL_VERSION }}
+          make_latest: "true"
           files: FriendLauncher.exe
       - name: Журнал в ветку ci-logs (чтобы разработчик мог его прочитать)
         if: always()

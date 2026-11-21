@@ -240,6 +240,7 @@ pub struct Api {
     settings: Arc<Mutex<Map<String, Value>>>,
     ms_flow: Mutex<Option<Arc<MsFlow>>>,
     updates: Mutex<HashMap<String, Vec<Value>>>,
+    self_update: Mutex<Option<crate::selfupdate::Info>>,
     room: Mutex<Option<crate::room::Active>>,
     room_port: Arc<std::sync::atomic::AtomicU16>,
     pub endpoints: Endpoints,
@@ -251,7 +252,8 @@ impl Api {
     pub fn new(dir: PathBuf) -> Api {
         let s = settings::load(&dir);
         let _ = std::fs::create_dir_all(dir.join("tmp"));
-        Api { store: Store::new(dir.clone()), dir, settings: Arc::new(Mutex::new(s)), ms_flow: Mutex::new(None), updates: Mutex::new(HashMap::new()), room: Mutex::new(None), room_port: Arc::new(std::sync::atomic::AtomicU16::new(0)), endpoints: Endpoints::default(), cache: Mutex::new(HashMap::new()), run: Arc::new(RunState::default()) }
+        crate::selfupdate::cleanup();
+        Api { store: Store::new(dir.clone()), dir, settings: Arc::new(Mutex::new(s)), ms_flow: Mutex::new(None), updates: Mutex::new(HashMap::new()), self_update: Mutex::new(None), room: Mutex::new(None), room_port: Arc::new(std::sync::atomic::AtomicU16::new(0)), endpoints: Endpoints::default(), cache: Mutex::new(HashMap::new()), run: Arc::new(RunState::default()) }
     }
 
     pub fn tmp_dir(&self) -> PathBuf {
@@ -596,6 +598,34 @@ impl Api {
                 }))
             }
             "ping" | "bye" => Ok(json!({"ok": true})),
+            "app.update_check" => {
+                let found = crate::selfupdate::check(&self.endpoints, APP_VERSION)?;
+                let out = match &found {
+                    Some(i) => json!({"available": true, "current": APP_VERSION, "latest": i.version, "size": i.size, "notes": i.notes}),
+                    None => json!({"available": false, "current": APP_VERSION, "latest": APP_VERSION}),
+                };
+                *self.self_update.lock().map_err(|_| "внутренняя ошибка")? = found;
+                Ok(out)
+            }
+            "app.update_install" => {
+                if self.any_running() {
+                    return Err("Сначала закрой игру: лаунчер перезапустится.".into());
+                }
+                let info = self.self_update.lock().map_err(|_| "внутренняя ошибка")?.clone();
+                let info = match info {
+                    Some(i) => i,
+                    None => crate::selfupdate::check(&self.endpoints, APP_VERSION)?.ok_or("Обновлений нет")?,
+                };
+                let dest = self.dir.join("update").join(format!("FriendLauncher-{}.exe", info.version));
+                crate::selfupdate::download(&info, &dest)?;
+                crate::selfupdate::apply(&dest)?;
+                crate::applog::log(&self.dir, &format!("Обновление {} → {}", APP_VERSION, info.version));
+                std::thread::spawn(|| {
+                    std::thread::sleep(std::time::Duration::from_millis(700));
+                    std::process::exit(0);
+                });
+                Ok(json!({"restarting": true, "version": info.version}))
+            }
             "poll" => {
                 let since = p["notice"].as_u64().unwrap_or(0);
                 let mut tasks = Map::new();

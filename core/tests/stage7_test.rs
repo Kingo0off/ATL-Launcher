@@ -27,6 +27,7 @@ fn theme_is_validated() {
     assert!(clean_theme(&json!({"preset": "a b"})).is_err());
     assert_eq!(clean_theme(&json!({"preset": "ocean"})).unwrap(), json!({"preset": "ocean"}));
     assert_eq!(clean_theme(&json!(null)).unwrap(), json!({}));
-    assert_eq!(clean_theme(&json!({"events": ["newyear", "x", "newyear"], "auto": true})).unwrap(), json!({"events": ["newyear"], "auto": true}));
-    assert!(clean_theme(&json!({"events": "newyear"})).is_err());
+    assert_eq!(clean_theme(&json!({"event": "halloween"})).unwrap(), json!({"event": "halloween"}));
+    assert!(clean_theme(&json!({"event": "easter"})).is_err());
+})).is_err());
 }

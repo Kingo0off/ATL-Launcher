@@ -14,6 +14,7 @@ pub mod net;
 pub mod paths;
 pub mod room;
 pub mod server;
+pub mod selfupdate;
 pub mod settings;
 pub mod shots;
 pub mod skins;
@@ -21,4 +22,7 @@ pub mod util;
 pub mod worlds;
 
 pub const APP_NAME: &str = "FriendLauncher";
-pub const APP_VERSION: &str = "3.0.0";
+pub const APP_VERSION: &str = match option_env!("FL_VERSION") {
+    Some(v) if !v.is_empty() => v,
+    _ => "3.0.0",
+};

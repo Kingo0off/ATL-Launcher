@@ -245,7 +245,7 @@ function playBtn(it, size = '') {
 function renderRail(r) {
   const acc = curAccount();
   const running = S.st.instances.some(i => i.phase === 'running' || i.phase === 'preparing');
-  const item = (name, icon, label, on) => `<button class="rail-btn ${on ? 'on' : ''}" data-act="nav" data-to="${name}" title="${label}">${ic(icon, 22)}<span>${label}</span>${name === 'library' && running ? '<i class="dot"></i>' : ''}</button>`;
+  const item = (name, icon, label, on) => `<button class="rail-btn ${on ? 'on' : ''}" data-act="nav" data-to="${name}" title="${label}">${ic(icon, 22)}<span>${label}</span>${(name === 'library' && running) || (name === 'settings' && S.upd && S.upd.available) ? '<i class="dot"></i>' : ''}</button>`;
   $('#rail').innerHTML = `${LOGO}
     ${item('library', 'grid', 'Библиотека', r.name === 'library' || r.name === 'i')}
     ${item('discover', 'compass', 'Обзор', r.name === 'discover')}
@@ -831,9 +831,10 @@ const EVENTS = {
 };
 const inRange = (e, d) => { const v = (d.getMonth() + 1) * 100 + d.getDate(), a = e.from[0] * 100 + e.from[1], b = e.to[0] * 100 + e.to[1]; return a <= b ? v >= a && v <= b : v >= a || v <= b; };
 function activeEvents(t, d = new Date()) {
-  const on = new Set(Array.isArray(t && t.events) ? t.events : []);
-  if (t && t.auto) for (const [id, e] of Object.entries(EVENTS)) if (inRange(e, d)) on.add(id);
-  return [...on].filter(id => EVENTS[id]);
+  const e = t && t.event;
+  if (EVENTS[e]) return [e];
+  if (e === 'auto') { const f = Object.entries(EVENTS).find(([, v]) => inRange(v, d)); return f ? [f[0]] : []; }
+  return [];
 }
 const THEME_VARS = ['--bg', '--rail', '--s1', '--s2', '--s3', '--line', '--line-soft', '--line-hi', '--text', '--muted', '--faint', '--accent', '--accent-2', '--accent-bg', '--accent-ink', '--play', '--play-2', '--play-ink'];
 const hex2rgb = h => { h = String(h).replace('#', ''); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) || 0); };
@@ -889,24 +890,29 @@ function applyFx(t) {
     h += Array.from({ length: 36 }, (_, i) => `<b class="flake" style="left:${r(0, 100)}%;--s:${r(3, 8)}px;--t:${r(9, 20)}s;--w:${r(-40, 40)}px;animation-delay:${-r(0, 20)}s;opacity:${r(.5, .95)}"></b>`).join('');
   }
   if (ids.includes('halloween')) {
-    h += `<div class="web tl">${web}</div><div class="web tr">${web}</div>`;
-    h += '<div class="spider"><i></i><span>🕷️</span></div>';
-    h += '<span class="bat" style="--y:12%;--t:19s;animation-delay:-3s">🦇</span><span class="bat" style="--y:30%;--t:27s;animation-delay:-14s">🦇</span>';
-    h += '<span class="pumpkin">🎃</span>';
+    const web2 = '<svg viewBox="0 0 140 140"><g stroke="#e7e9f7" stroke-width="1.3" fill="none" stroke-linecap="round"><path d="M0 0L140 0M0 0L132 40M0 0L108 90M0 0L70 124M0 0L30 138M0 0L0 140"/><path d="M26 0Q24 24 0 26M52 0Q46 46 0 52M80 0Q70 70 0 80M110 0Q96 96 0 110"/></g></svg>';
+    const pump = '<svg viewBox="0 0 100 92"><path d="M46 22Q47 6 62 3L60 13Q55 15 55 24Z" fill="#4d7c0f"/><ellipse cx="50" cy="56" rx="46" ry="34" fill="#ea580c"/><ellipse cx="27" cy="56" rx="25" ry="33" fill="#f97316"/><ellipse cx="73" cy="56" rx="25" ry="33" fill="#f97316"/><ellipse cx="50" cy="56" rx="17" ry="34" fill="#fb923c"/><path d="M26 44L41 44L33 58Z M59 44L74 44L67 58Z M50 58L44 67L56 67Z" fill="#fef08a"/><path d="M27 70Q50 90 73 70L67 69L62 76L56 69L50 77L44 69L38 76L33 69Z" fill="#fef08a"/></svg>';
+    const bat = '<svg viewBox="0 0 60 30"><path d="M30 11C27 2 13 0 0 7C8 8 10 14 14 19C18 14 22 16 26 23L30 18L34 23C38 16 42 14 46 19C50 14 52 8 60 7C47 0 33 2 30 11Z" fill="#241538" stroke="#8b5cf6" stroke-width="1.2"/></svg>';
+    const spider = '<svg viewBox="0 0 40 36"><g stroke="#8b5cf6" stroke-width="1.6" fill="none" stroke-linecap="round"><path d="M14 16L4 8M14 18L2 18M14 20L4 30M26 16L36 8M26 18L38 18M26 20L36 30"/></g><circle cx="20" cy="22" r="9" fill="#241538" stroke="#8b5cf6" stroke-width="1.2"/><circle cx="20" cy="12" r="5" fill="#241538" stroke="#8b5cf6" stroke-width="1.2"/><circle cx="18" cy="11" r="1.3" fill="#f87171"/><circle cx="22" cy="11" r="1.3" fill="#f87171"/></svg>';
+    h += '<div class="mist"></div>';
+    h += `<div class="web tl">${web2}</div><div class="web tr">${web2}</div>`;
+    h += `<div class="spider"><i></i>${spider}</div>`;
+    h += `<span class="bat" style="--y:14%;--t:21s;animation-delay:-4s">${bat}</span><span class="bat sm" style="--y:34%;--t:30s;animation-delay:-17s">${bat}</span>`;
+    h += `<span class="pumpkin p1">${pump}</span><span class="pumpkin p2">${pump}</span>`;
   }
   if (ids.includes('valentine')) {
     h += Array.from({ length: 22 }, () => `<b class="heart" style="left:${r(0, 100)}%;--s:${r(12, 26)}px;--t:${r(8, 16)}s;--w:${r(-30, 30)}px;animation-delay:${-r(0, 16)}s">${Math.random() < .5 ? '❤' : '💗'}</b>`).join('');
   }
   fx.innerHTML = h;
 }
-const fxKeep = () => { const t = S.theme || {}, o = {}; if (t.events) o.events = t.events; if (t.auto) o.auto = true; return o; };
+const fxKeep = () => { const t = S.theme || {}; return t.event ? { event: t.event } : {}; };
 const saveThemeSoon = debounce(() => {
   api('settings.set', { theme: S.theme || {} }).then(d => { S.st.settings = d.settings; }).catch(e => toast(e.message, 'error'));
 }, 400);
 function setTheme(t, save = true) { S.theme = t; applyTheme(t); if (save) saveThemeSoon(); }
 
 /* ====================== настройки ====================== */
-const SET_TABS = [['game', 'Игра', 'sliders'], ['accounts', 'Аккаунты и сервисы', 'globe'], ['look', 'Внешний вид', 'shirt'], ['data', 'Данные', 'folder']];
+const SET_TABS = [['game', 'Игра', 'sliders'], ['accounts', 'Аккаунты и сервисы', 'globe'], ['look', 'Внешний вид', 'shirt'], ['data', 'Данные', 'folder'], ['about', 'Обновления', 'refresh']];
 function settingsHTML() {
   const s = S.st.settings, tab = S.setTab || 'game';
   const f = (id, label, val, hint = '', type = 'text', ph = '') => `<label class="fld"><span>${label}</span><input type="${type}" id="${id}" value="${esc(val)}" placeholder="${esc(ph)}">${hint ? `<small>${hint}</small>` : ''}</label>`;
@@ -921,11 +927,11 @@ function settingsHTML() {
     const t = S.theme || {}, c = themeBase(t);
     const row = (key, label, hint) => `<div class="color-row"><div><b>${label}</b><small>${hint}</small></div><input type="color" id="th-${key}" value="${esc(c[key] || (key === 'text' ? (lumOf(c.bg) > .45 ? '#1b1e2b' : '#e9eaf2') : '#000000'))}" aria-label="${label}"></div>`;
     const tile = ([id, p]) => `<button class="preset ${t.preset === id && !t.accent && !t.play && !t.bg && !t.text ? 'on' : ''}" data-act="theme-preset" data-id="${id}"><div class="pv" style="background:${p.bg}"><i style="background:${p.accent}"></i><i style="background:${p.play}"></i></div><span>${p.emoji ? p.emoji + ' ' : ''}${esc(p.name)}</span></button>`;
-    const evs = activeEvents(t), manual = new Set(t.events || []);
+    const evs = activeEvents(t);
     body = `<section class="panel"><h2 class="sec">Готовые темы</h2><div class="presets">${Object.entries(THEMES).map(tile).join('')}</div></section>
       <section class="panel"><h2 class="sec">Праздничные украшения</h2>
-        <div class="colors">${Object.entries(EVENTS).map(([id, e]) => `<label class="color-row" style="cursor:pointer"><div><b>${e.emoji} ${esc(e.name)}</b><small>${esc(e.desc)}</small></div><input type="checkbox" id="th-ev-${id}" ${manual.has(id) ? 'checked' : ''}></label>`).join('')}
-        <label class="color-row" style="cursor:pointer"><div><b>Включать сами по датам</b><small>${evs.length ? 'Сейчас идёт: ' + evs.map(i => EVENTS[i].emoji + ' ' + esc(EVENTS[i].name)).join(', ') : 'Сейчас подходящих праздников нет'}. Новый год — с 15 декабря по 10 января, Хэллоуин — с 20 октября по 2 ноября, 14 февраля — с 10 по 15 февраля.</small></div><input type="checkbox" id="th-auto" ${t.auto ? 'checked' : ''}></label></div></section>
+        <div class="colors">${[['', '🚫', 'Без украшений', 'Обычный вид'], ['auto', '📅', 'По датам', evs.length ? 'Сейчас идёт: ' + EVENTS[evs[0]].emoji + ' ' + EVENTS[evs[0]].name : 'Включаются сами в нужные дни: Новый год, Хэллоуин, 14 февраля'], ...Object.entries(EVENTS).map(([id, e]) => [id, e.emoji, e.name, e.desc])].map(([id, em, name, desc]) => `<label class="color-row" style="cursor:pointer"><div><b>${em} ${esc(name)}</b><small>${esc(desc)}</small></div><input type="radio" name="th-event" id="th-event-${id || 'off'}" ${(t.event || '') === id ? 'checked' : ''}></label>`).join('')}</div>
+        <p class="hint" style="margin-top:10px">Одновременно работает только одно событие. «По датам»: Новый год с 15 декабря по 10 января, Хэллоуин с 20 октября по 2 ноября, 14 февраля с 10 по 15 февраля.</p></section>
       <section class="panel"><h2 class="sec">Свои цвета</h2><div class="colors">
         ${row('accent', 'Основной цвет', 'Кнопки, выделение, значки')}
         ${row('play', 'Кнопка «Играть»', 'Цвет главной кнопки')}
@@ -933,6 +939,14 @@ function settingsHTML() {
         ${row('text', 'Текст', 'Цвет надписей')}</div>
         <div style="margin-top:16px"><button class="btn sm" data-act="theme-reset">Сбросить на стандартные</button></div>
         <p class="hint" style="margin-top:10px">Изменения применяются сразу и запоминаются.</p></section>`;
+  } else if (tab === 'about') {
+    const u = S.upd || {};
+    body = `<section class="panel"><h2 class="sec">Версия</h2><p>Установлена: <b>${esc(S.st.version)}</b></p>
+      <p class="hint" style="margin-top:6px">${u.error ? esc(u.error) : u.available ? 'Доступна новая версия: <b>' + esc(u.latest) + '</b>' : u.checked ? 'У тебя последняя версия.' : 'Проверка ещё не выполнялась.'}</p>
+      ${u.available && u.notes ? `<p class="hint" style="margin-top:8px;white-space:pre-wrap">${esc(u.notes)}</p>` : ''}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+        <button class="btn" data-act="update-check" ${u.busy ? 'disabled' : ''}>${ic('refresh', 15)} Проверить обновления</button>
+        ${u.available ? `<button class="btn primary" data-act="update-install" ${u.busy ? 'disabled' : ''}>${u.busy === 'install' ? 'Скачиваю…' : 'Обновить и перезапустить'}</button>` : ''}</div></section>`;
   } else {
     body = `<section class="panel"><h2 class="sec">Данные</h2><p class="hint" style="margin-bottom:12px;overflow-wrap:anywhere">${esc(S.st.data_dir)}</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn sm" data-act="open-app" data-what="data">${ic('folder', 15)} Папка данных</button><button class="btn sm" data-act="open-app" data-what="exports">${ic('folder', 15)} Папка экспорта</button></div></section>`;
@@ -1141,6 +1155,12 @@ const A = {
     S.st.settings = d.settings; toast('Настройки сохранены', 'ok');
     setTimeout(async () => { await refresh(); }, 1500);
   },
+  'update-check': async () => { await checkUpdate(true); render(); },
+  'update-install': async () => {
+    S.upd = { ...S.upd, busy: 'install' }; render();
+    try { await api('app.update_install', {}); toast('Перезапускаю лаунчер…', 'ok'); }
+    catch (e) { S.upd = { ...S.upd, busy: false }; render(); toast(e.message, 'error'); }
+  },
   'set-tab': el => { S.setTab = el.dataset.tab; render(); },
   'theme-preset': el => { setTheme({ ...fxKeep(), preset: el.dataset.id }); render(); },
   'theme-reset': () => { setTheme(fxKeep()); render(); toast('Цвета сброшены', 'ok'); },
@@ -1262,8 +1282,7 @@ document.addEventListener('input', e => {
   if (id === 'lib-q') { S.lib.q = e.target.value; $('#grid').innerHTML = gridHTML(); $('#hero').innerHTML = heroHTML(); }
   else if (id === 'mod-q') { S.modq = e.target.value; drawMods(); }
   else if (id === 'br-q') debouncedBr(e.target.value);
-  else if (id === 'th-auto') { const t = { ...(S.theme || {}) }; if (e.target.checked) t.auto = true; else delete t.auto; setTheme(t); render(); }
-  else if (id && id.startsWith('th-ev-')) { const t = { ...(S.theme || {}) }, ev = new Set(t.events || []), k = id.slice(6); e.target.checked ? ev.add(k) : ev.delete(k); if (ev.size) t.events = [...ev]; else delete t.events; setTheme(t); }
+  else if (id && id.startsWith('th-event-')) { const v = id.slice(9), t = { ...(S.theme || {}) }; if (v === 'off') delete t.event; else t.event = v; setTheme(t); }
   else if (id && id.startsWith('th-')) { const k = id.slice(3); setTheme({ ...(S.theme || {}), [k]: e.target.value }); }
 });
 const debouncedBr = debounce(v => { if (S.br) { S.br.q = v.trim(); brSearch(true); } }, 350);
@@ -1349,6 +1368,16 @@ function updateProgressUI() {
   pill.innerHTML = `<span class="spin"></span>${esc(v.label)}${v.total ? ` ${v.done} из ${v.total}` : '…'}`;
 }
 const phases = t => JSON.stringify(Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v.phase])));
+async function checkUpdate(manual) {
+  S.upd = { ...(S.upd || {}), busy: manual ? 'check' : false };
+  try {
+    const d = await api('app.update_check', {});
+    S.upd = { ...d, checked: true, busy: false };
+    if (d.available && !manual) toast(`Вышла новая версия ${d.latest}. Установить: Настройки → Обновления`, 'info');
+    if (manual) toast(d.available ? `Найдена версия ${d.latest}` : 'У тебя последняя версия', d.available ? 'info' : 'ok');
+  } catch (e) { S.upd = { ...S.upd, busy: false, error: manual ? e.message : '' }; if (manual) toast(e.message, 'error'); }
+  if (!manual) { try { renderRail(route()); } catch (e) { } }
+}
 async function pollLoop() {
   for (;;) {
     try {
@@ -1372,5 +1401,6 @@ async function pollLoop() {
   }
   render();
   pollLoop();
+  checkUpdate(false);
   addEventListener('pagehide', () => navigator.sendBeacon('api/bye', '{}'));
 })();

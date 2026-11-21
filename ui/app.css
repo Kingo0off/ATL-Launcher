@@ -361,20 +361,9 @@ canvas.bad { opacity: .2; }
 #fx .garland { position: absolute; top: 0; left: 0; right: 0; height: 26px; border-top: 2px solid rgba(120,130,150,.5); }
 #fx .garland i { position: absolute; width: 9px; height: 13px; margin-left: -4px; border-radius: 50% 50% 55% 55%; background: var(--c); box-shadow: 0 0 10px 2px var(--c); animation: fx-twinkle 1.6s ease-in-out infinite alternate; animation-delay: var(--d); }
 @keyframes fx-twinkle { from { opacity: .35; } to { opacity: 1; } }
-#fx .web { position: absolute; top: 0; width: 150px; height: 150px; opacity: .45; }
-#fx .web.tl { left: 0; } #fx .web.tr { right: 0; transform: scaleX(-1); }
-#fx .web svg { width: 100%; height: 100%; }
-#fx .spider { position: absolute; top: 0; right: 150px; display: flex; flex-direction: column; align-items: center; animation: fx-drop 7s ease-in-out infinite alternate; }
-#fx .spider i { width: 1px; height: 60px; background: rgba(207,211,230,.6); }
-#fx .spider span { font-size: 22px; margin-top: -4px; }
-@keyframes fx-drop { from { transform: translateY(-40px); } to { transform: translateY(70px); } }
-#fx .bat { position: absolute; top: var(--y); left: -40px; font-size: 22px; animation: fx-bat var(--t) linear infinite; }
-@keyframes fx-bat { 0% { transform: translate(0, 0); } 25% { transform: translate(30vw, 30px); } 50% { transform: translate(60vw, -20px); } 75% { transform: translate(90vw, 25px); } 100% { transform: translate(115vw, 0); } }
-#fx .pumpkin { position: absolute; left: 76px; bottom: 6px; font-size: 30px; filter: drop-shadow(0 0 10px rgba(255,150,40,.7)); }
 #fx .heart { position: absolute; bottom: -30px; font-size: var(--s); animation: fx-rise var(--t) linear infinite; opacity: .8; }
 @keyframes fx-rise { to { transform: translate(var(--w), calc(-100vh - 40px)); } }
-@media (prefers-reduced-motion: reduce) { #fx .flake, #fx .heart, #fx .bat { display: none; } #fx .spider, #fx .garland i { animation: none; } }
-
+@media (prefers-reduced-motion: reduce) { #fx .flake, #fx .heart, 
 /* сугробы на кнопках */
 .fx-newyear .btn.primary, .fx-newyear .btn.play, .fx-newyear .card, .fx-newyear .rail-btn.on { position: relative; }
 .fx-newyear .btn.primary::after, .fx-newyear .btn.play::after, .fx-newyear .card::after, .fx-newyear .rail-btn.on::after {
@@ -382,10 +371,31 @@ canvas.bad { opacity: .2; }
   clip-path: polygon(0 0, 100% 0, 100% 50%, 93% 100%, 82% 55%, 68% 100%, 54% 60%, 40% 100%, 26% 55%, 12% 100%, 0 50%); }
 .fx-newyear .card::after { left: 0; right: 0; }
 /* тыква и сердечки у кнопки «Играть» */
-.fx-halloween .btn.play, .fx-valentine .btn.play { position: relative; overflow: visible; }
-.fx-halloween .btn.play::before { content: "🎃"; position: absolute; top: -15px; right: -9px; font-size: 22px; pointer-events: none; }
+.fx-valentine .btn.play { position: relative; overflow: visible; }
 .fx-valentine .btn.play::before { content: "💖"; position: absolute; top: -13px; right: -9px; font-size: 20px; pointer-events: none; }
-.fx-halloween .card::after { content: "🕸️"; position: absolute; top: 3px; right: 6px; font-size: 18px; opacity: .6; pointer-events: none; }
-.fx-halloween .card { position: relative; }
 .fx-valentine .btn.primary::before { content: "❤"; position: absolute; top: -8px; right: -5px; font-size: 14px; color: #ff6b8b; pointer-events: none; }
 .fx-valentine .btn.primary { position: relative; }
+
+/* Хэллоуин */
+#fx .mist { position: absolute; inset: auto 0 0 0; height: 38vh; background: radial-gradient(ellipse 70% 100% at 20% 100%, rgba(249,115,22,.16), transparent 70%), radial-gradient(ellipse 60% 100% at 85% 100%, rgba(139,92,246,.18), transparent 70%); animation: fx-mist 9s ease-in-out infinite alternate; }
+@keyframes fx-mist { from { opacity: .6; } to { opacity: 1; } }
+#fx .web { position: absolute; top: 0; width: 140px; height: 140px; opacity: .5; }
+#fx .web.tl { left: 0; } #fx .web.tr { right: 0; transform: scaleX(-1); }
+#fx .web svg { width: 100%; height: 100%; }
+#fx .spider { position: absolute; top: 0; right: 120px; display: flex; flex-direction: column; align-items: center; animation: fx-drop 8s ease-in-out infinite alternate; }
+#fx .spider i { width: 1px; height: 70px; background: rgba(231,233,247,.55); }
+#fx .spider svg { width: 30px; height: 27px; margin-top: -3px; }
+@keyframes fx-drop { from { transform: translateY(-50px); } to { transform: translateY(60px); } }
+#fx .bat { position: absolute; top: var(--y); left: -70px; width: 46px; animation: fx-bat var(--t) linear infinite; }
+#fx .bat.sm { width: 30px; }
+#fx .bat svg { display: block; width: 100%; animation: fx-flap .35s ease-in-out infinite alternate; transform-origin: 50% 40%; }
+@keyframes fx-flap { from { transform: scaleY(1); } to { transform: scaleY(.55); } }
+@keyframes fx-bat { 0% { transform: translate(0, 0); } 25% { transform: translate(30vw, 34px); } 50% { transform: translate(62vw, -18px); } 75% { transform: translate(92vw, 28px); } 100% { transform: translate(118vw, 0); } }
+#fx .pumpkin { position: absolute; bottom: -12px; filter: drop-shadow(0 0 14px rgba(251,146,60,.75)); animation: fx-flicker 3s ease-in-out infinite alternate; }
+#fx .pumpkin svg { display: block; width: 100%; }
+#fx .pumpkin.p1 { right: 26px; width: 84px; }
+#fx .pumpkin.p2 { right: 120px; width: 56px; animation-delay: -1.4s; }
+@keyframes fx-flicker { from { filter: drop-shadow(0 0 8px rgba(251,146,60,.5)); } to { filter: drop-shadow(0 0 18px rgba(251,191,36,.9)); } }
+.fx-halloween .card:hover, .fx-halloween .btn.primary:hover { box-shadow: 0 0 18px rgba(251,146,60,.35); }
+.fx-halloween .btn.play { box-shadow: 0 0 22px rgba(251,146,60,.5); }
+@media (prefers-reduced-motion: reduce) { #fx .bat svg, #fx .pumpkin, #fx .mist { animation: none; } }
