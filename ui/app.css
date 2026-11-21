@@ -339,6 +339,7 @@ canvas.bad { opacity: .2; }
 .set-nav { display: grid; gap: 4px; position: sticky; top: 20px; }
 .set-nav button { display: flex; align-items: center; gap: 10px; border: 0; background: none; color: var(--muted); padding: 10px 12px; border-radius: 10px; text-align: left; font-weight: 600; }
 .set-nav button:hover { color: var(--text); background: var(--s1); }
+.set-nav .tab-dot { margin-left: auto; width: 8px; height: 8px; border-radius: 50%; background: var(--play); flex: none; }
 .set-nav button.on { color: var(--accent-2); background: var(--accent-bg); }
 .set-body { display: grid; gap: 18px; max-width: 640px; }
 .presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }

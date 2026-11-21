@@ -953,7 +953,7 @@ function settingsHTML() {
   }
   const saves = tab === 'game' || tab === 'accounts';
   return `<div class="page"><div class="page-head"><div><h1>Настройки</h1><p class="sub">Версия ${esc(S.st.version)}</p></div><div class="head-actions">${saves ? '<button class="btn primary" data-act="save-app-settings">Сохранить</button>' : ''}</div></div>
-    <div class="set-wrap"><nav class="set-nav" aria-label="Разделы настроек">${SET_TABS.map(([id, label, icon]) => `<button class="${tab === id ? 'on' : ''}" data-act="set-tab" data-tab="${id}">${ic(icon, 18)}${label}</button>`).join('')}</nav>
+    <div class="set-wrap"><nav class="set-nav" aria-label="Разделы настроек">${SET_TABS.map(([id, label, icon]) => `<button class="${tab === id ? 'on' : ''}" data-act="set-tab" data-tab="${id}">${ic(icon, 18)}${label}${id === 'about' && S.upd && S.upd.available ? '<i class="tab-dot" title="Есть обновление"></i>' : ''}</button>`).join('')}</nav>
     <div class="set-body">${body}</div></div></div>`;
 }
 
