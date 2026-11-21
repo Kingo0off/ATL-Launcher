@@ -214,18 +214,9 @@ pub const GET_OK: [&str; 10] = ["state", "poll", "log", "modicon", "ping", "late
 pub const SUBFOLDERS: [&str; 9] = ["", "mods", "saves", "logs", "resourcepacks", "shaderpacks", "screenshots", "backups", "config"];
 pub const MAX_UPLOAD: [(&str, u64); 4] = [("import", 4 << 30), ("content", 1 << 29), ("skin", 1 << 20), ("icon", 2 << 20)];
 
-/// Значок сборки: пусто (пиксельный по зерну), `custom` (своя картинка) или `g:<значок>:<цвет>`.
+/// Значок сборки: пусто (пиксельный по зерну `icon_seed`) или `custom` (своя картинка).
 pub fn valid_icon(s: &str) -> bool {
-    if s.is_empty() || s == "custom" {
-        return true;
-    }
-    let parts: Vec<&str> = s.split(':').collect();
-    parts.len() == 3
-        && parts[0] == "g"
-        && (1..=16).contains(&parts[1].len())
-        && parts[1].chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '-')
-        && (1..=2).contains(&parts[2].len())
-        && parts[2].chars().all(|c| c.is_ascii_digit())
+    s.is_empty() || s == "custom"
 }
 
 /// Ширина и высота PNG по заголовку (None, если это не PNG).
@@ -319,7 +310,7 @@ impl Api {
         } else if custom {
             (String::new(), 0)
         } else {
-            (inst["icon"].as_str().unwrap_or("").to_string(), 0)
+            (String::new(), 0)
         };
         json!({
             "key": key, "kind": "local", "id": id, "name": inst["name"], "mc_version": inst["mc_version"],

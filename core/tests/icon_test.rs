@@ -26,10 +26,10 @@ fn create(api: &Api) -> Value {
 
 #[test]
 fn icon_values_are_checked() {
-    for ok in ["", "custom", "g:cube:0", "g:pick-axe:12", "g:a_b:3"] {
+    for ok in ["", "custom"] {
         assert!(valid_icon(ok), "{}", ok);
     }
-    for bad in ["../x", "g:cube", "g:Cube:1", "g::1", "g:cube:x", "g:cube:123", "custom2", "g:cube:1:2", "g:aaaaaaaaaaaaaaaaa:1"] {
+    for bad in ["../x", "g:cube:0", "custom2", " custom"] {
         assert!(!valid_icon(bad), "{}", bad);
     }
 }
@@ -43,9 +43,10 @@ fn custom_icon_upload_select_and_reset() {
     let key = format!("local:{}", id);
     assert_eq!(inst["icon"], "");
 
-    // выбор значка из набора
-    let r = api.call("instances.update", &json!({"id": id, "icon": "g:gem:4"})).unwrap();
-    assert_eq!(r["instance"]["icon"], "g:gem:4");
+    // выбор пиксельного значка из списка (меняется зерно)
+    let r = api.call("instances.update", &json!({"id": id, "icon": "", "icon_seed": "v7"})).unwrap();
+    assert_eq!(r["instance"]["icon"], "");
+    assert_eq!(r["instance"]["icon_seed"], "v7");
     // чужие значения и «custom» без файла отклоняются
     assert!(api.call("instances.update", &json!({"id": id, "icon": "../x"})).is_err());
     assert!(api.call("instances.update", &json!({"id": id, "icon": "custom"})).is_err());
@@ -71,9 +72,9 @@ fn custom_icon_upload_select_and_reset() {
     let got = items["instances"].as_array().unwrap().iter().find(|i| i["id"] == id.as_str()).unwrap().clone();
     assert_eq!(got["icon"], "custom");
 
-    // возврат к значку из набора удаляет файл
-    let r = api.call("instances.update", &json!({"id": id, "icon": "g:cube:0"})).unwrap();
-    assert_eq!(r["instance"]["icon"], "g:cube:0");
+    // возврат к пиксельному значку удаляет файл
+    let r = api.call("instances.update", &json!({"id": id, "icon": "", "icon_seed": "v9"})).unwrap();
+    assert_eq!(r["instance"]["icon"], "");
     assert!(matches!(api.call_out("insticon", &json!({"key": key})).unwrap(), Out::Missing));
 
     // копия не наследует свою картинку
