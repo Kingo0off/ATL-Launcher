@@ -4,7 +4,7 @@
   "version": "3.0.0",
   "identifier": "app.friendlauncher.launcher",
   "build": {
-    "frontendDist": "../launcher/web"
+    "frontendDist": "../ui"
   },
   "app": {
     "windows": [],

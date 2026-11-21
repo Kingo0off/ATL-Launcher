@@ -2,7 +2,7 @@ name: Rust (тесты и .exe)
 on:
   push:
     branches: [main]
-    paths: ["core/**", "src-tauri/**", "Cargo.toml", "launcher/web/**", ".github/workflows/rust.yml"]
+    paths: ["core/**", "src-tauri/**", "Cargo.toml", "ui/**", ".github/workflows/rust.yml"]
     tags: ["v*"]
   workflow_dispatch:
 permissions:

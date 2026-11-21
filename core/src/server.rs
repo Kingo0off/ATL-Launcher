@@ -8,9 +8,9 @@ use std::io::{Read, Write};
 use std::sync::Arc;
 use tiny_http::{Header, Method, Request, Response, Server};
 
-const INDEX_HTML: &str = include_str!("../../launcher/web/index.html");
-const APP_JS: &str = include_str!("../../launcher/web/app.js");
-const APP_CSS: &str = include_str!("../../launcher/web/app.css");
+const INDEX_HTML: &str = include_str!("../../ui/index.html");
+const APP_JS: &str = include_str!("../../ui/app.js");
+const APP_CSS: &str = include_str!("../../ui/app.css");
 
 const CSP: &str = "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; \
                    script-src 'self'; connect-src 'self'; frame-ancestors 'none'";
