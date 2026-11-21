@@ -616,7 +616,7 @@ impl Api {
                     Some(i) => i,
                     None => crate::selfupdate::check(&self.endpoints, APP_VERSION)?.ok_or("Обновлений нет")?,
                 };
-                let dest = self.dir.join("update").join(format!("FriendLauncher-{}.exe", info.version));
+                let dest = self.dir.join("update").join(format!("Voxel-{}.exe", info.version));
                 crate::selfupdate::download(&info, &dest)?;
                 crate::selfupdate::apply(&dest)?;
                 crate::applog::log(&self.dir, &format!("Обновление {} → {}", APP_VERSION, info.version));
@@ -956,7 +956,7 @@ impl Api {
             }
             "shots.save_copy" => {
                 let r = self.local_ref(pstr(p, "key")?)?;
-                let dest = paths::home().join("Pictures").join("FriendLauncher");
+                let dest = paths::home().join("Pictures").join("Voxel");
                 let path = shots::copy_to(&r.gdir, pstr(p, "file")?, &dest)?;
                 Ok(json!({"path": path.to_string_lossy()}))
             }

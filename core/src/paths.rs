@@ -1,6 +1,17 @@
 use std::path::PathBuf;
 
-/// Папка данных. Та же, что у Python-версии, поэтому сборки и настройки общие.
+/// Папка `Voxel`. Если осталась папка прежнего названия `FriendLauncher`, она переименовывается
+/// (сборки, миры и аккаунты сохраняются). Не вышло переименовать: работаем со старой папкой.
+fn pick(root: PathBuf) -> PathBuf {
+    let new = root.join("Voxel");
+    let old = root.join("FriendLauncher");
+    if !new.exists() && old.is_dir() && std::fs::rename(&old, &new).is_err() {
+        return old;
+    }
+    new
+}
+
+/// Папка данных. Формат тот же, что у Python-версии и у FriendLauncher, поэтому сборки и настройки общие.
 pub fn data_dir() -> PathBuf {
     let base = if let Ok(p) = std::env::var("FRIENDLAUNCHER_HOME") {
         PathBuf::from(p)
@@ -8,14 +19,14 @@ pub fn data_dir() -> PathBuf {
         let root = std::env::var("APPDATA")
             .map(PathBuf::from)
             .unwrap_or_else(|_| home());
-        root.join("FriendLauncher")
+        pick(root)
     } else if cfg!(target_os = "macos") {
-        home().join("Library/Application Support/FriendLauncher")
+        pick(home().join("Library/Application Support"))
     } else {
         let root = std::env::var("XDG_DATA_HOME")
             .map(PathBuf::from)
             .unwrap_or_else(|_| home().join(".local/share"));
-        root.join("FriendLauncher")
+        pick(root)
     };
     let _ = std::fs::create_dir_all(&base);
     base

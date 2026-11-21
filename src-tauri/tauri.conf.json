@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "FriendLauncher",
+  "productName": "Voxel",
   "version": "3.0.0",
   "identifier": "app.friendlauncher.launcher",
   "build": {

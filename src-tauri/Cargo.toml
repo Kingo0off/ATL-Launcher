@@ -2,7 +2,7 @@
 name = "friendlauncher"
 version = "3.0.0"
 edition = "2021"
-description = "FriendLauncher: свой лаунчер Minecraft для игры с друзьями"
+description = "Voxel: свой лаунчер Minecraft для игры с друзьями"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

@@ -256,7 +256,7 @@ fn html_escape(s: &str) -> String {
 
 fn done_page(ok: bool, msg: &str) -> String {
     format!(
-        "<!doctype html><meta charset=utf-8><title>FriendLauncher</title><body style=\"font:18px system-ui;background:#0f1117;color:#e9eaf2;display:grid;place-items:center;height:100vh;margin:0\"><div style=\"text-align:center;max-width:420px;padding:20px\"><h1 style=\"color:{}\">{}</h1><p>{}</p></div>",
+        "<!doctype html><meta charset=utf-8><title>Voxel</title><body style=\"font:18px system-ui;background:#0f1117;color:#e9eaf2;display:grid;place-items:center;height:100vh;margin:0\"><div style=\"text-align:center;max-width:420px;padding:20px\"><h1 style=\"color:{}\">{}</h1><p>{}</p></div>",
         if ok { "#7be0a8" } else { "#ff8a8a" },
         if ok { "Вход выполнен" } else { "Ошибка входа" },
         html_escape(msg)

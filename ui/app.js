@@ -549,7 +549,7 @@ function drawCreate(tab) {
   const body = $('#cr-body');
   if (tab === 'import') {
     body.innerHTML = `<div class="dropzone" id="imp-zone"><p style="margin-bottom:12px">Выбери или перетащи файл сборки</p><button class="btn primary" data-act="imp-pick">${ic('download')} Выбрать файл</button>
-      <input type="file" id="imp-file" accept=".mrpack,.zip" hidden><p class="hint" style="margin-top:14px">.mrpack с Modrinth, экспорт FriendLauncher или .zip из Prism / MultiMC</p></div>`;
+      <input type="file" id="imp-file" accept=".mrpack,.zip" hidden><p class="hint" style="margin-top:14px">.mrpack с Modrinth, экспорт Voxel или .zip из Prism / MultiMC</p></div>`;
     return;
   }
   body.innerHTML = `<label class="fld"><span>Название</span><input type="text" id="cr-name" placeholder="Например, Выживание" maxlength="60"></label>

@@ -4,7 +4,9 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::path::Path;
 
-pub const ASSET: &str = "FriendLauncher.exe";
+pub const ASSET: &str = "Voxel.exe";
+/// Старое имя файла в релизах: его ищут прежние версии, и оно остаётся запасным.
+pub const OLD_ASSET: &str = "FriendLauncher.exe";
 
 #[derive(Clone, Debug)]
 pub struct Info {
@@ -41,7 +43,9 @@ pub fn newer(a: &str, b: &str) -> bool {
 /// Разбор ответа GitHub `releases/latest`.
 pub fn parse_release(js: &Value) -> Option<Info> {
     let tag = js.get("tag_name")?.as_str()?;
-    let asset = js.get("assets")?.as_array()?.iter().find(|a| a.get("name").and_then(|n| n.as_str()) == Some(ASSET))?;
+    let assets = js.get("assets")?.as_array()?;
+    let by_name = |want: &str| assets.iter().find(|a| a.get("name").and_then(|n| n.as_str()) == Some(want));
+    let asset = by_name(ASSET).or_else(|| by_name(OLD_ASSET))?;
     let sha = asset
         .get("digest")
         .and_then(|d| d.as_str())
