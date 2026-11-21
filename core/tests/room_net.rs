@@ -18,6 +18,13 @@ fn detect_port_from_log() {
 }
 
 #[test]
+fn parse_netstat_listeners() {
+    let t = "  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       4\n  TCP    0.0.0.0:54321          0.0.0.0:0              LISTENING       777\n  TCP    [::]:54321             [::]:0                 LISTENING       777\n  TCP    127.0.0.1:50000        127.0.0.1:50001        ESTABLISHED     777\n  TCP    0.0.0.0:25565          0.0.0.0:0              LISTENING       888\n";
+    assert_eq!(friendlauncher_core::launch::parse_netstat(t, 777), vec![54321]);
+    assert!(friendlauncher_core::launch::parse_netstat(t, 1).is_empty());
+}
+
+#[test]
 #[ignore]
 fn tunnel_end_to_end() {
     // «Мир Minecraft»: простой эхо-сервер на локальном порту

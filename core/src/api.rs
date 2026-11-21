@@ -18,6 +18,7 @@ pub struct RunTask {
     started: f64,
     lines: Mutex<(usize, VecDeque<String>)>,
     stop: AtomicBool,
+    pid: std::sync::atomic::AtomicU32,
 }
 
 impl RunTask {
@@ -29,6 +30,7 @@ impl RunTask {
             started: now_secs(),
             lines: Mutex::new((0, VecDeque::new())),
             stop: AtomicBool::new(false),
+            pid: std::sync::atomic::AtomicU32::new(0),
         }
     }
     fn add(&self, text: &str) {
@@ -118,7 +120,13 @@ impl RunState {
 /// Порт мира, открытого для сети, по журналам запущенных игр.
 fn detect_world_port(run: &RunState) -> Option<u16> {
     let tasks: Vec<Arc<RunTask>> = run.tasks.lock().ok()?.values().cloned().collect();
-    tasks.iter().filter(|t| t.phase() == "running").filter_map(|t| crate::room::detect_port(&t.read(0).0)).last()
+    let running: Vec<&Arc<RunTask>> = tasks.iter().filter(|t| t.phase() == "running").collect();
+    // Сначала по журналу игры, потом по портам, которые слушает процесс игры.
+    running
+        .iter()
+        .filter_map(|t| crate::room::detect_port(&t.read(0).0))
+        .last()
+        .or_else(|| running.iter().filter_map(|t| crate::launch::listening_ports(t.pid.load(Ordering::Relaxed)).into_iter().max()).last())
 }
 
 fn now_secs() -> f64 {
@@ -149,6 +157,7 @@ fn run_worker(dir: PathBuf, run: Arc<RunState>, task: Arc<RunTask>, key: String,
         };
         run.clear_progress(&tag);
         let mut child = cmd.spawn().map_err(|e| format!("Не удалось запустить Java: {}", e))?;
+        task.pid.store(child.id(), Ordering::Relaxed);
         task.set_phase("running");
         let started = now_secs();
         let code = crate::launch::pump(&mut child, &|l| task.add(&l), &task.stop);

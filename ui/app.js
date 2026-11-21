@@ -832,6 +832,11 @@ async function loadNetwork(st) {
   let d;
   try { d = st || await api('room.status'); } catch (e) { box.innerHTML = `<p class="err-text">${esc(e.message)}</p>`; return; }
   if (!$('#net-box')) return;
+  // Страница обновляется само, но только если что-то изменилось и пока ты не печатаешь.
+  const sig = JSON.stringify([d.mode, d.status, d.peers, d.world_port, d.refused, d.error, d.listen_port, d.manual_port]);
+  const typing = document.activeElement && ['net-port', 'net-code'].includes(document.activeElement.id);
+  if (st === undefined && (sig === S.netSig || typing)) { clearTimeout(S.netTimer); if (d.mode) S.netTimer = setTimeout(() => { if (route().name === 'network') loadNetwork(); }, 2500); return; }
+  S.netSig = sig;
   const how = `<p class="hint">Игра идёт напрямую между компьютерами (шифруется), а если не получается, через публичный сервер-посредник. Работает только для Minecraft. Все должны быть на одной и той же версии игры.</p>`;
   if (d.mode === 'host') {
     const wp = d.world_port;
@@ -858,7 +863,7 @@ async function loadNetwork(st) {
   if (d.mode) S.netTimer = setTimeout(() => { if (route().name === 'network') loadNetwork(); }, 2500);
 }
 async function netRun(fn) {
-  try { await loadNetwork(await fn()); } catch (e) { toast(e.message, 'error'); loadNetwork(); }
+  try { await loadNetwork(await fn()); } catch (e) { toast(e.message, 'error'); S.netSig = ''; loadNetwork(); }
 }
 
 /* ====================== аккаунты ====================== */
@@ -1191,7 +1196,7 @@ function render(opts = {}) {
   else if (r.name === 'discover') { v.innerHTML = discoverHTML(); browseInto($('#browse'), null); }
   else if (r.name === 'shots') { v.innerHTML = shotsHTML(); if (S.shots?.list && opts.soft) drawShots(); else loadShots(); }
   else if (r.name === 'skins') { v.innerHTML = skinsHTML(); if (S.sk?.list && opts.soft) drawSkins(); else loadSkins(); }
-  else if (r.name === 'network') { v.innerHTML = networkHTML(); loadNetwork(); }
+  else if (r.name === 'network') { v.innerHTML = networkHTML(); S.netSig = ''; loadNetwork(); }
   else if (r.name === 'settings') v.innerHTML = settingsHTML();
   else if (r.name === 'i') renderInstance(r);
   else go('library');

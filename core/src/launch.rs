@@ -423,3 +423,35 @@ pub fn prepare_game(spec: &RunSpec, progress: Progress, log: Log) -> Result<Comm
     log(&format!("Запуск игры под ником {}…", acc["name"].as_str().unwrap_or("")));
     Ok(cmd)
 }
+
+/// Разбор вывода `netstat -ano`: порты, которые слушает процесс с данным PID.
+pub fn parse_netstat(text: &str, pid: u32) -> Vec<u16> {
+    let mut out = Vec::new();
+    for l in text.lines() {
+        let f: Vec<&str> = l.split_whitespace().collect();
+        if f.len() < 5 || !f[0].eq_ignore_ascii_case("TCP") || !f[3].eq_ignore_ascii_case("LISTENING") {
+            continue;
+        }
+        if f[4].parse::<u32>().ok() != Some(pid) {
+            continue;
+        }
+        if let Some(port) = f[1].rsplit(':').next().and_then(|p| p.parse::<u16>().ok()) {
+            if port >= 1024 && !out.contains(&port) {
+                out.push(port);
+            }
+        }
+    }
+    out
+}
+
+/// Порты, которые слушает процесс (так находится мир, открытый для сети).
+pub fn listening_ports(pid: u32) -> Vec<u16> {
+    if !cfg!(windows) || pid == 0 {
+        return Vec::new();
+    }
+    let out = command(Path::new("netstat")).args(["-ano", "-p", "tcp"]).stdout(Stdio::piped()).stderr(Stdio::null()).output();
+    match out {
+        Ok(o) => parse_netstat(&String::from_utf8_lossy(&o.stdout), pid),
+        Err(_) => Vec::new(),
+    }
+}
