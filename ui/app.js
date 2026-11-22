@@ -284,7 +284,7 @@ function renderRail(r) {
     ${item('library', 'grid', 'Библиотека', r.name === 'library' || r.name === 'i')}
     ${item('discover', 'compass', 'Обзор', r.name === 'discover')}
     ${item('shots', 'image', 'Снимки', r.name === 'shots')}
-    ${item('skins', 'shirt', 'Скины', r.name === 'skins')}
+    ${item('skins', 'shirt', 'Скины', r.name === 'skins').replace('</button>', '<i class="soon-tag">скоро</i></button>')}
     ${item('network', 'globe', 'Сеть', r.name === 'network')}
     ${item('settings', 'sliders', 'Настройки', r.name === 'settings')}
     <div class="grow"></div>
@@ -329,8 +329,8 @@ function gridHTML() {
 }
 function heroHTML() {
   if (!curAccount()) {
-    return `<section class="onboard"><div><h2>Начни с аккаунта</h2><p>Войди через Ely.by или Microsoft — после этого любую сборку можно запускать одной кнопкой.</p></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" data-act="ely-login">Войти через Ely.by</button><button class="btn" data-act="ms-login">Войти через Microsoft</button></div></section>`;
+    return `<section class="onboard"><div><h2>Начни с аккаунта</h2><p>Войди через Ely.by — после этого любую сборку можно запускать одной кнопкой.</p></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" data-act="ely-login">Войти через Ely.by</button></div></section>`;
   }
   if (S.lib.q) return '';
   const it = [...S.st.instances].filter(i => i.last_played).sort((a, b) => b.last_played - a.last_played)[0];
@@ -386,7 +386,7 @@ async function tabOverview(it, el) {
   const ram = it.kind === 'local' ? (it.ram_mb ? `${it.ram_mb} МБ` : `Общая, ${S.st.settings.ram_mb} МБ`) : 'Общая';
   const vanilla = (it.loader?.type || 'vanilla') === 'vanilla';
   el.innerHTML = `
-    ${!curAccount() ? `<div class="note">Чтобы играть, <a href="#" data-act="acct-menu">добавь аккаунт</a> Ely.by или Microsoft.</div>` : ''}
+    ${!curAccount() ? `<div class="note">Чтобы играть, <a href="#" data-act="acct-menu">добавь аккаунт</a> Ely.by.</div>` : ''}
     ${it.kind === 'local' && vanilla && m.mods.length ? '<div class="note warn">В сборке есть моды, но загрузчик не выбран — они не заработают. Выбери Fabric, Quilt, Forge или NeoForge на вкладке «Настройки».</div>' : ''}
     <div class="stats">
       <div class="stat"><span>Последний запуск</span><b>${esc(fmtAgo(it.last_played))}</b></div>
@@ -651,7 +651,7 @@ function drawHits() {
   const more = $('#br-more');
   if (B.err) {
     const key = /ключ API CurseForge/.test(B.err);
-    box.innerHTML = `<div class="empty"><h3>${key ? 'Нужен ключ CurseForge' : 'Не получилось загрузить каталог'}</h3><p>${esc(B.err)}</p><div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">${key ? `<button class="btn primary" data-act="nav" data-to="settings">${ic('sliders')} Открыть настройки</button><button class="btn" data-act="open-url" data-url="https://console.curseforge.com/">${ic('link', 14)} Получить ключ</button>` : ''}<button class="btn" data-act="br-retry">${ic('refresh')} Повторить</button></div></div>`; more.hidden = true; return; }
+    box.innerHTML = `<div class="empty"><h3>${key ? 'CurseForge пока недоступен' : 'Не получилось загрузить каталог'}</h3><p>${esc(B.err)}</p><div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">${key ? `<button class="btn primary" data-act="nav" data-to="settings">${ic('sliders')} Открыть настройки</button><button class="btn" data-act="open-url" data-url="https://console.curseforge.com/">${ic('link', 14)} Получить ключ</button>` : ''}<button class="btn" data-act="br-retry">${ic('refresh')} Повторить</button></div></div>`; more.hidden = true; return; }
   if (!B.hits.length) { box.innerHTML = B.loading ? '<div class="empty"><span class="spin"></span><p style="margin-top:10px">Ищу…</p></div>' : '<div class="empty"><h3>Ничего не найдено</h3><p>Попробуй другой запрос или сбрось фильтры.</p></div>'; more.hidden = true; return; }
   box.innerHTML = B.hits.map(h => {
     const done = B.installed.has(h.project_id), busy = B.busy.has(h.project_id);
@@ -773,9 +773,8 @@ function skinAcc() {
   return ms.find(a => a.uuid === S.sk?.uuid) || ms.find(a => a.uuid === S.st.selected) || ms[0] || null;
 }
 function skinsHTML() {
-  return `<div class="page"><div class="page-head"><div><h1>Скины</h1><p class="sub">Меняй скин аккаунта Microsoft прямо из лаунчера</p></div>
-    <div class="head-actions"><button class="btn" data-act="skin-lookup">${ic('search')} Взять скин игрока</button><button class="btn primary" data-act="skin-upload">${ic('upload')} Загрузить .png</button><input type="file" id="skin-file" accept=".png,image/png" hidden></div></div>
-    <div id="skins-box"></div></div>`;
+  return `<div class="page"><div class="page-head"><div><h1>Скины</h1><p class="sub">Смена скина прямо из лаунчера</p></div></div>
+    <div class="empty soon">${ic('shirt', 42)}<h3>Скоро</h3><p>Раздел со скинами ещё готовится. Когда он появится, это будет в обновлении лаунчера.</p></div></div>`;
 }
 async function loadSkins(full = true) {
   const prev = S.sk || {};
@@ -958,8 +957,7 @@ function settingsHTML() {
     body = `<section class="panel"><h2 class="sec">Игра</h2>${f('st-ram', 'Память по умолчанию, МБ', s.ram_mb, 'Можно переопределить в настройках каждой сборки.', 'number')}
       ${f('st-java', 'Путь к Java', s.java_path, 'Оставь пустым — лаунчер сам скачает нужную Java.', 'text', 'Автоматически')}</section>`;
   } else if (tab === 'accounts') {
-    body = `<section class="panel"><h2 class="sec">Вход через Microsoft</h2>${f('st-ms', 'Client ID приложения Azure', s.ms_client_id, 'Нужен только для входа через Microsoft. Как получить — в README, раздел «Вход через Microsoft».', 'text', 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')}</section>
-      <section class="panel"><h2 class="sec">CurseForge</h2>${f('st-cf', 'Ключ API CurseForge', s.cf_api_key || '', 'Бесплатный ключ нужен для поиска и установки с CurseForge: console.curseforge.com → API keys.', 'text')}</section>`;
+    body = `<section class="panel"><h2 class="sec">CurseForge</h2>${f('st-cf', 'Свой ключ API CurseForge', s.cf_api_key || '', 'Необязательно. Если ключ уже встроен в лаунчер, оставь поле пустым. Свой бесплатный ключ: console.curseforge.com → API keys.', 'text')}</section>`;
   } else if (tab === 'look') {
     const t = S.theme || {}, c = themeBase(t);
     const row = (key, label, hint) => `<div class="color-row"><div><b>${label}</b><small>${hint}</small></div><input type="color" id="th-${key}" value="${esc(c[key] || (key === 'text' ? (lumOf(c.bg) > .45 ? '#1b1e2b' : '#e9eaf2') : '#000000'))}" aria-label="${label}"></div>`;
@@ -1044,7 +1042,7 @@ function acctMenu(anchor) {
       <button class="who" data-act="acct-select" data-uuid="${esc(a.uuid)}"><b>${esc(a.name)}</b><small>${a.type === 'ely' ? 'Ely.by' : 'Microsoft'}</small></button>
       ${sel && a.uuid === sel.uuid ? `<span class="tick">${ic('check', 16)}</span>` : ''}
       <button class="btn ghost sq sm" data-act="acct-remove" data-uuid="${esc(a.uuid)}" data-type="${a.type}" title="Убрать аккаунт">${ic('x', 15)}</button></div>`).join('')}
-    ${accs.length ? '<hr>' : ''}<button class="item" data-act="ely-login">${ic('plus', 16)} Добавить Ely.by</button><button class="item" data-act="ms-login">${ic('plus', 16)} Добавить Microsoft</button>`, { up: true });
+    ${accs.length ? '<hr>' : ''}<button class="item" data-act="ely-login">${ic('plus', 16)} Добавить Ely.by</button>`, { up: true });
   hydrateAvatars(pop);
 }
 function elyLogin() {
@@ -1199,7 +1197,7 @@ const A = {
   'net-port': () => netRun(() => api('room.set_port', { port: +$('#net-port').value || 0 })),
   'save-app-settings': async () => {
     const body = {};
-    for (const [k, id, num] of [['ram_mb', 'st-ram', true], ['java_path', 'st-java'], ['ms_client_id', 'st-ms'], ['cf_api_key', 'st-cf']]) {
+    for (const [k, id, num] of [['ram_mb', 'st-ram', true], ['java_path', 'st-java'], ['cf_api_key', 'st-cf']]) {
       const el = $('#' + id); if (el) body[k] = num ? +el.value : el.value;
     }
     const d = await api('settings.set', body);
@@ -1395,7 +1393,7 @@ function render(opts = {}) {
   if (r.name === 'library') v.innerHTML = libraryHTML();
   else if (r.name === 'discover') { v.innerHTML = discoverHTML(); browseInto($('#browse'), null); }
   else if (r.name === 'shots') { v.innerHTML = shotsHTML(); if (S.shots?.list && opts.soft) drawShots(); else loadShots(); }
-  else if (r.name === 'skins') { v.innerHTML = skinsHTML(); if (S.sk?.list && opts.soft) drawSkins(); else loadSkins(); }
+  else if (r.name === 'skins') { v.innerHTML = skinsHTML(); }
   else if (r.name === 'network') { v.innerHTML = networkHTML(); S.netSig = ''; loadNetwork(); }
   else if (r.name === 'settings') v.innerHTML = settingsHTML();
   else if (r.name === 'i') renderInstance(r);

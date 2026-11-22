@@ -403,7 +403,8 @@ impl Api {
     }
 
     fn cf_key(&self) -> String {
-        self.settings.lock().ok().and_then(|s| s.get("cf_api_key").and_then(|v| v.as_str().map(|x| x.trim().to_string()))).unwrap_or_default()
+        let own = self.settings.lock().ok().and_then(|s| s.get("cf_api_key").and_then(|v| v.as_str().map(|x| x.trim().to_string()))).unwrap_or_default();
+        if own.is_empty() { crate::settings::BUILTIN_CF_KEY.trim().to_string() } else { own }
     }
 
     fn import_file(&self, path: &Path, tag: &str) -> Result<Value, String> {

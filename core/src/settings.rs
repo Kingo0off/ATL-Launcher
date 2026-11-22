@@ -4,6 +4,12 @@ use std::path::Path;
 /// Настройки, которые видит интерфейс.
 pub const PUBLIC: [&str; 7] = ["theme", "server_url", "ms_client_id", "cf_api_key", "ram_mb", "java_path", "site_dir"];
 
+/// Ключ API CurseForge, вшитый при сборке (переменная FL_CF_API_KEY). Свой ключ из настроек важнее.
+pub const BUILTIN_CF_KEY: &str = match option_env!("FL_CF_API_KEY") {
+    Some(k) => k,
+    None => "",
+};
+
 pub fn defaults() -> Map<String, Value> {
     let v = json!({
         "server_url": "",

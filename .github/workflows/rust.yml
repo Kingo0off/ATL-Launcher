@@ -12,6 +12,7 @@ jobs:
     runs-on: windows-latest
     env:
       FL_MS_CLIENT_ID: ${{ vars.FL_MS_CLIENT_ID }}
+      FL_CF_API_KEY: ${{ secrets.FL_CF_API_KEY }}
     defaults:
       run:
         shell: bash

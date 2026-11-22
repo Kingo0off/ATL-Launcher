@@ -262,7 +262,7 @@ fn cf_loader(kind: &str) -> Option<i64> {
 
 fn cf_call(ep: &Endpoints, key: &str, path: &str, params: &[(&str, String)], body: Option<&Value>) -> Result<Value, String> {
     if key.trim().is_empty() {
-        return Err("Нужен ключ API CurseForge: получи бесплатный на console.curseforge.com и вставь его в «Настройки».".into());
+        return Err("Нужен ключ API CurseForge. Если у тебя есть свой (бесплатный, console.curseforge.com), вставь его в «Настройки → Аккаунты и сервисы».".into());
     }
     let (st, js) = http_json(&format!("{}{}{}", ep.curseforge, path, query(params)), body, None, &[("x-api-key", key.trim())], None).map_err(|e| e.0)?;
     if st == 401 || st == 403 {

@@ -419,3 +419,9 @@ canvas.bad { opacity: .2; }
 .hero .pix-img { width: 92px; height: 92px; border-radius: 18px; object-fit: cover; filter: none; }
 .inst-icon { overflow: hidden; }
 .inst-icon .pix-img { width: 100%; height: 100%; object-fit: cover; filter: none; }
+
+/* раздел «Скоро» и метка у кнопки в боковой панели */
+.empty.soon { margin-top: 24px; padding: 56px 24px; }
+.empty.soon svg { color: var(--accent-2); opacity: .8; }
+.rail-btn { position: relative; }
+.soon-tag { position: absolute; top: 3px; right: 3px; padding: 2px 5px; border-radius: 6px; background: var(--accent-bg); color: var(--accent-2); font-style: normal; font-size: 8.5px; font-weight: 700; line-height: 1; text-transform: uppercase; letter-spacing: .02em; }
