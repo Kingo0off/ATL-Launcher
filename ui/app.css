@@ -438,7 +438,16 @@ canvas.bad { opacity: .2; }
 .tag { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--s1); color: var(--muted); font-size: 12.5px; line-height: 1.2; }
 .tag:hover { border-color: var(--accent); color: var(--text); }
 .tag.on { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-2); }
-.tag.clear { border-style: dashed; color: var(--faint); }
+.tag.clear { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; color: #fff; background: var(--danger); border-color: var(--danger); box-shadow: 0 2px 10px rgba(255, 107, 127, .35); }
+.tag.clear:hover { filter: brightness(1.1); color: #fff; border-color: var(--danger); }
+.vsel { position: relative; }
+.vsel-btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px 9px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--s2); color: var(--muted); font-weight: 600; }
+.vsel-btn b { color: var(--text); }
+.vsel-btn:hover, .vsel-btn[aria-expanded=true] { border-color: var(--accent); }
+.vsel-menu { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 100%; padding: 6px; border-radius: 12px; border: 1px solid var(--line); background: var(--s1); box-shadow: 0 12px 30px rgba(0, 0, 0, .5); display: flex; flex-direction: column; gap: 2px; }
+.vsel-menu button { text-align: left; padding: 9px 14px; border-radius: 8px; font-weight: 700; color: var(--muted); }
+.vsel-menu button:hover { background: var(--s3); color: var(--text); }
+.vsel-menu button.on { background: rgba(95, 211, 154, .16); color: var(--ok); }
 
 /* страница мода */
 .hit-icon.link, .plink { cursor: pointer; }

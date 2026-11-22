@@ -622,13 +622,21 @@ const BR_TAGS = {
   shader: [['cartoon', 'Мультяшные'], ['fantasy', 'Фэнтези'], ['realistic', 'Реалистичные'], ['semi-realistic', 'Полуреалистичные'], ['vanilla-like', 'Как ваниль'], ['cursed', 'Проклятое']],
   modpack: [['adventure', 'Приключения'], ['challenging', 'Сложные'], ['combat', 'Бой'], ['kitchen-sink', 'Всё и сразу'], ['lightweight', 'Лёгкие'], ['magic', 'Магия'], ['multiplayer', 'Мультиплеер'], ['optimization', 'Оптимизация'], ['quests', 'Квесты'], ['technology', 'Технологии']],
 };
+const LIMITS = [5, 10, 15, 20, 50, 100];
+const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
+function drawLimit(open) {
+  const B = S.br, box = $('#br-lim'); if (!B || !box) return;
+  box.innerHTML = `<button type="button" class="vsel-btn" data-act="lim-toggle" aria-haspopup="listbox" aria-expanded="${!!open}">Вид: <b>${B.limit}</b><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>`
+    + (open ? `<div class="vsel-menu" role="listbox">${LIMITS.map(n => `<button type="button" role="option" class="${n === B.limit ? 'on' : ''}" data-act="lim-set" data-n="${n}">${n}</button>`).join('')}</div>` : '');
+}
 function drawTags() {
   const B = S.br, box = $('#br-tags');
   if (!B || !box) return;
   const list = B.src === 'modrinth' ? BR_TAGS[B.type] || [] : [];
   box.hidden = !list.length;
   box.innerHTML = list.map(([k, t]) => `<button type="button" class="tag ${B.tags.has(k) ? 'on' : ''}" data-act="br-tag" data-t="${k}" aria-pressed="${B.tags.has(k)}">${t}</button>`).join('')
-    + (B.tags.size ? '<button type="button" class="tag clear" data-act="br-tags-clear">Сбросить</button>' : '');
+    + (B.tags.size ? `<button type="button" class="tag clear" data-act="br-tags-clear">${ic('x', 13)} Сбросить (${B.tags.size})</button>` : '');
 }
 /* md-begin */
 /* Описание мода приходит в Markdown. Весь текст сначала экранируется, потом разрешаются только свои теги,
@@ -695,6 +703,7 @@ const fmtDate = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLoc
 const SIDE = { required: 'нужен', optional: 'по желанию', unsupported: 'не нужен', unknown: '—' };
 async function openProject(h) {
   const B = S.br, D = B.detail = { h, tab: 'desc', p: null, v: null, err: '', verr: '' };
+  try { history.pushState({ brDetail: 1 }, ''); D.pushed = true; } catch { }
   drawDetail();
   $('#br-detail')?.scrollIntoView?.({ block: 'start' });
   try { const p = await api('modrinth.project', { id: h.project_id }); if (B.detail !== D) return; D.p = p; }
@@ -765,7 +774,7 @@ function tabAdd(it, el) { browseInto(el, it); }
 function browseInto(el, it) {
   const B = S.br = {
     ctx: it ? it.key : null, it, src: 'modrinth', type: 'mod', q: '', sort: 'relevance', mc: it ? it.mc_version : '', loader: it ? (it.loader?.type || '') : '',
-    hits: [], total: 0, loading: false, err: '', installed: new Set(), busy: new Set(), seq: 0, tags: new Set(),
+    hits: [], total: 0, loading: false, err: '', installed: new Set(), busy: new Set(), seq: 0, tags: new Set(), limit: LIMITS.includes(+lsGet('br-limit')) ? +lsGet('br-limit') : 20,
   };
   const types = [['mod', 'Моды'], ['resourcepack', 'Ресурспаки'], ['shader', 'Шейдеры']].concat(it ? [] : [['modpack', 'Сборки']]);
   const vanilla = it && (it.loader?.type || 'vanilla') === 'vanilla';
@@ -774,6 +783,7 @@ function browseInto(el, it) {
     <div class="filters"><div class="seg" id="br-types">${types.map(([k, t]) => `<button data-act="br-type" data-t="${k}" class="${k === 'mod' ? 'on' : ''}">${t}</button>`).join('')}</div><span style="flex:1"></span>
       ${it ? `<span class="chip">для ${esc(it.mc_version)}</span>${loaderChip(it)}`
       : `<select id="br-mc" aria-label="Версия Minecraft"><option value="">Любая версия</option></select><select id="br-ld" aria-label="Загрузчик"><option value="">Любой загрузчик</option>${['fabric', 'quilt', 'forge', 'neoforge'].map(k => `<option value="${k}">${LOADER_NAMES[k]}</option>`).join('')}</select>`}
+      <div class="vsel" id="br-lim"></div>
       <select id="br-sort" aria-label="Сортировка">${[['relevance', 'По релевантности'], ['downloads', 'По загрузкам'], ['newest', 'Новые'], ['updated', 'Обновлённые']].map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></div>
     <div class="tags" id="br-tags"></div>
     ${vanilla ? '<div class="note warn">У сборки не выбран загрузчик, поэтому моды установить нельзя. Выбери Fabric, Quilt, Forge или NeoForge на вкладке «Настройки». Ресурспаки и шейдеры ставятся и так.</div>' : ''}
@@ -781,6 +791,7 @@ function browseInto(el, it) {
   if (it) api('content.installed', { key: it.key }).then(d => { B.installed = new Set(d.project_ids); drawHits(); }).catch(() => { });
   else api('meta.mc_versions', { snapshots: false }).then(d => { $('#br-mc').insertAdjacentHTML('beforeend', d.versions.slice(0, 60).map(v => `<option>${esc(v)}</option>`).join('')); }).catch(() => { });
   drawTags();
+  drawLimit();
   brSearch(true);
 }
 async function brSearch(reset) {
@@ -789,7 +800,7 @@ async function brSearch(reset) {
   if (reset) { B.hits = []; B.total = 0; }
   B.loading = true; B.err = ''; drawHits();
   try {
-    const d = await api(B.src + '.search', { query: B.q, type: B.type, mc: B.mc, loader: B.type === 'mod' || B.type === 'modpack' ? B.loader : '', sort: B.sort, offset: B.hits.length, tags: B.src === 'modrinth' ? [...B.tags] : [] });
+    const d = await api(B.src + '.search', { query: B.q, type: B.type, mc: B.mc, loader: B.type === 'mod' || B.type === 'modpack' ? B.loader : '', sort: B.sort, offset: B.hits.length, limit: B.limit, tags: B.src === 'modrinth' ? [...B.tags] : [] });
     if (my !== B.seq) return;
     B.hits = B.hits.concat(d.hits); B.total = d.total;
   } catch (e) { if (my !== B.seq) return; B.err = e.message; }
@@ -1403,6 +1414,8 @@ const A = {
   /* Modrinth */
   'br-type': el => { S.br.type = el.dataset.t; S.br.tags.clear(); drawTags(); $$('#br-types button').forEach(b => b.classList.toggle('on', b === el)); brSearch(true); },
   'br-tag': el => { const B = S.br, t = el.dataset.t; B.tags.has(t) ? B.tags.delete(t) : B.tags.add(t); drawTags(); brSearch(true); },
+  'lim-toggle': () => drawLimit(!$('#br-lim .vsel-menu')),
+  'lim-set': el => { const B = S.br, n = +el.dataset.n; drawLimit(false); if (!B || !LIMITS.includes(n) || n === B.limit) return; B.limit = n; lsSet('br-limit', n); drawLimit(); brSearch(true); },
   'br-tags-clear': () => { S.br.tags.clear(); drawTags(); brSearch(true); },
   'br-src': el => { const B = S.br; if (B.src === el.dataset.s) return; B.src = el.dataset.s; B.tags.clear(); drawTags(); $$('#br-src button').forEach(b => b.classList.toggle('on', b === el)); $('#br-q').placeholder = 'Искать на ' + (B.src === 'curseforge' ? 'CurseForge' : 'Modrinth'); brSearch(true); },
   /* скриншоты и скины */
@@ -1434,7 +1447,7 @@ const A = {
   'skin-save-current': async () => { const acc = skinAcc(); await api('skins.import_current', { uuid: acc.uuid }); toast('Скин сохранён в библиотеку', 'ok'); await loadSkins(false); },
   'br-more': () => brSearch(false),
   'br-open': el => { const h = S.br.hits.find(x => x.project_id === el.dataset.pid); if (h) openProject(h); },
-  'br-back': () => { S.br.detail = null; drawDetail(); },
+  'br-back': () => { const D = S.br.detail; if (D && D.pushed && history.state && history.state.brDetail) history.back(); else { S.br.detail = null; drawDetail(); } },
   'br-tab': el => { const D = S.br.detail; if (!D) return; D.tab = el.dataset.t; drawDetail(); if (D.tab === 'versions') loadVersions(); },
   'br-img': el => {
     const o = document.createElement('div'); o.className = 'lightbox'; o.setAttribute('data-act', 'br-img-close'); o.innerHTML = `<img src="${esc(el.dataset.url)}" alt="">`;
@@ -1480,6 +1493,7 @@ async function uploadFiles(files, folder) {
 /* ====================== события ====================== */
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
+  if (!e.target.closest('#br-lim') && $('#br-lim .vsel-menu')) drawLimit(false);
   if (!el) { if (!e.target.closest('.pop')) closePop(); return; }
   const fn = A[el.dataset.act];
   if (!fn) return;
@@ -1567,6 +1581,8 @@ function render(opts = {}) {
   if (fid) { const n = document.getElementById(fid); if (n && n !== document.activeElement) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) { /* не текстовое поле */ } } }
 }
 addEventListener('hashchange', () => render());
+/* «Назад» на мыши или в системе закрывает страницу мода, а не уходит на главную */
+addEventListener('popstate', () => { const B = S.br; if (B && B.detail) { B.detail = null; drawDetail(); } });
 
 function updateProgressUI() {
   const r = route(), entries = Object.entries(S.prog);

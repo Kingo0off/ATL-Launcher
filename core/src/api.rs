@@ -837,13 +837,14 @@ impl Api {
                 let ptype = if popt(p, "type").is_empty() { "mod" } else { popt(p, "type") };
                 let sort = if popt(p, "sort").is_empty() { "relevance" } else { popt(p, "sort") };
                 let offset = p["offset"].as_u64().unwrap_or(0);
+                let limit = p["limit"].as_u64().unwrap_or(20).clamp(5, 100);
                 Ok(if name == "modrinth.search" {
                     {
                         let tags: Vec<String> = p["tags"].as_array().map(|a| a.iter().filter_map(|t| t.as_str().map(String::from)).collect()).unwrap_or_default();
-                        crate::catalog::mr_search(&self.endpoints, popt(p, "query"), ptype, popt(p, "mc"), popt(p, "loader"), &tags, sort, offset, 20)?
+                        crate::catalog::mr_search(&self.endpoints, popt(p, "query"), ptype, popt(p, "mc"), popt(p, "loader"), &tags, sort, offset, limit)?
                     }
                 } else {
-                    crate::catalog::cf_search(&self.endpoints, &self.cf_key(), popt(p, "query"), ptype, popt(p, "mc"), popt(p, "loader"), sort, offset, 20)?
+                    crate::catalog::cf_search(&self.endpoints, &self.cf_key(), popt(p, "query"), ptype, popt(p, "mc"), popt(p, "loader"), sort, offset, limit.min(50))?
                 })
             }
             "modrinth.project" => Ok(crate::catalog::mr_project(&self.endpoints, pstr(p, "id")?)?),
