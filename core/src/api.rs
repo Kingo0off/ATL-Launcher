@@ -219,6 +219,11 @@ pub fn valid_icon(s: &str) -> bool {
     s.is_empty() || s == "custom"
 }
 
+/// Внешнюю ссылку из описания мода можно открыть, только если это обычный https-адрес.
+pub fn valid_link(u: &str) -> bool {
+    u.len() > 8 && u.len() <= 2000 && u.starts_with("https://") && !u.chars().any(|c| c.is_whitespace() || c.is_control())
+}
+
 /// Ширина и высота PNG по заголовку (None, если это не PNG).
 pub fn png_dims(d: &[u8]) -> Option<(u32, u32)> {
     if d.len() < 24 || &d[..8] != b"\x89PNG\r\n\x1a\n" || &d[12..16] != b"IHDR" {
@@ -840,6 +845,19 @@ impl Api {
                 } else {
                     crate::catalog::cf_search(&self.endpoints, &self.cf_key(), popt(p, "query"), ptype, popt(p, "mc"), popt(p, "loader"), sort, offset, 20)?
                 })
+            }
+            "modrinth.project" => crate::catalog::mr_project(&self.endpoints, pstr(p, "id")?),
+            "modrinth.versions" => {
+                let ptype = if popt(p, "type").is_empty() { "mod" } else { popt(p, "type") };
+                Ok(json!({"versions": crate::catalog::mr_version_list(&self.endpoints, pstr(p, "id")?, popt(p, "mc"), popt(p, "loader"), ptype)?}))
+            }
+            "app.open_link" => {
+                let url = pstr(p, "url")?;
+                if !valid_link(url) {
+                    return Err("Этот адрес открывать нельзя".into());
+                }
+                open_url(url);
+                Ok(json!({}))
             }
             "modrinth.install" => self.catalog_install(p, false),
             "curseforge.install" => self.catalog_install(p, true),

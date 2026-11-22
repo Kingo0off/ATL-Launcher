@@ -113,6 +113,68 @@ pub fn mr_search(ep: &Endpoints, q: &str, ptype: &str, mc: &str, loader: &str, t
     Ok(json!({"hits": hits, "total": total}))
 }
 
+fn str_list(v: &Value, max: usize) -> Vec<Value> {
+    v.as_array().map(|a| a.iter().filter(|x| x.is_string()).take(max).cloned().collect()).unwrap_or_default()
+}
+
+/// Из ответа Modrinth `/project/<id>` оставляет то, что показывает страница мода.
+pub fn trim_project(p: &Value) -> Value {
+    let loaders = str_list(&p["loaders"], 12);
+    let mut cats: Vec<Value> = Vec::new();
+    for c in str_list(&p["categories"], 16).into_iter().chain(str_list(&p["additional_categories"], 16)) {
+        if !loaders.contains(&c) && !cats.contains(&c) {
+            cats.push(c);
+        }
+    }
+    let gallery: Vec<Value> = p["gallery"]
+        .as_array()
+        .map(|g| {
+            g.iter()
+                .filter_map(|x| {
+                    let url = x["url"].as_str()?;
+                    Some(json!({"url": url, "title": x["title"].as_str().unwrap_or(""), "description": x["description"].as_str().unwrap_or(""), "featured": x["featured"].as_bool().unwrap_or(false)}))
+                })
+                .take(24)
+                .collect()
+        })
+        .unwrap_or_default();
+    json!({
+        "project_id": p["id"], "slug": p["slug"], "title": p["title"].as_str().unwrap_or(""),
+        "description": p["description"].as_str().unwrap_or(""), "body": p["body"].as_str().unwrap_or(""),
+        "icon_url": p["icon_url"].as_str().unwrap_or(""), "downloads": p["downloads"].as_i64().unwrap_or(0),
+        "followers": p["followers"].as_i64().unwrap_or(0), "categories": cats, "loaders": loaders,
+        "game_versions": str_list(&p["game_versions"], 300), "gallery": gallery,
+        "client_side": p["client_side"].as_str().unwrap_or(""), "server_side": p["server_side"].as_str().unwrap_or(""),
+        "license": p["license"]["name"].as_str().or(p["license"]["id"].as_str()).unwrap_or(""),
+        "links": {"source": p["source_url"].as_str().unwrap_or(""), "issues": p["issues_url"].as_str().unwrap_or(""), "wiki": p["wiki_url"].as_str().unwrap_or(""), "discord": p["discord_url"].as_str().unwrap_or("")},
+        "published": p["published"].as_str().unwrap_or(""), "updated": p["updated"].as_str().unwrap_or(""),
+        "project_type": p["project_type"].as_str().unwrap_or("mod")
+    })
+}
+
+pub fn mr_project(ep: &Endpoints, id: &str) -> Result<Value, String> {
+    safe_name(id)?;
+    Ok(trim_project(&mr_get(ep, &format!("/project/{}", id), &[])?))
+}
+
+/// Список версий для вкладки «Версии»: не больше 40 штук, журнал изменений обрезан.
+pub fn mr_version_list(ep: &Endpoints, pid: &str, mc: &str, loader: &str, ptype: &str) -> Result<Vec<Value>, String> {
+    let vs = mr_versions(ep, pid, mc, loader, ptype)?;
+    Ok(vs
+        .iter()
+        .take(40)
+        .map(|v| {
+            json!({
+                "id": v["id"], "name": v["name"].as_str().unwrap_or(""), "version_number": v["version_number"].as_str().unwrap_or(""),
+                "version_type": v["version_type"].as_str().unwrap_or("release"), "game_versions": str_list(&v["game_versions"], 40),
+                "loaders": str_list(&v["loaders"], 8), "downloads": v["downloads"].as_i64().unwrap_or(0),
+                "date_published": v["date_published"].as_str().unwrap_or(""),
+                "changelog": v["changelog"].as_str().unwrap_or("").chars().take(3000).collect::<String>()
+            })
+        })
+        .collect())
+}
+
 fn mr_versions(ep: &Endpoints, pid: &str, mc: &str, loader: &str, ptype: &str) -> Result<Vec<Value>, String> {
     safe_name(pid)?;
     let mut params: Vec<(&str, String)> = Vec::new();

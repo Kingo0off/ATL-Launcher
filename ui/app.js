@@ -630,6 +630,137 @@ function drawTags() {
   box.innerHTML = list.map(([k, t]) => `<button type="button" class="tag ${B.tags.has(k) ? 'on' : ''}" data-act="br-tag" data-t="${k}" aria-pressed="${B.tags.has(k)}">${t}</button>`).join('')
     + (B.tags.size ? '<button type="button" class="tag clear" data-act="br-tags-clear">Сбросить</button>' : '');
 }
+/* md-begin */
+/* Описание мода приходит в Markdown. Весь текст сначала экранируется, потом разрешаются только свои теги,
+   а ссылки и картинки только https. Так чужое описание не может ничего выполнить. */
+const safeHttps = u => /^https:\/\/[^\s"'<>]+$/i.test(u);
+function mdInline(t) {
+  const keep = [];
+  const hold = h => '\u0002' + (keep.push(h) - 1) + '\u0002';
+  t = t.replace(/`([^`\n]+)`/g, (_, c) => hold(`<code>${c}</code>`));
+  t = t.replace(/!\[([^\]]*)\]\(\s*(\S+?)(?:\s+&quot;[^)]*?&quot;)?\s*\)/g, (m, alt, u) => safeHttps(u) ? hold(`<img src="${u}" alt="${alt}" loading="lazy">`) : '');
+  t = t.replace(/\[([^\]]+)\]\(\s*(\S+?)(?:\s+&quot;[^)]*?&quot;)?\s*\)/g, (m, txt, u) => safeHttps(u) ? `<a href="#" data-act="open-link" data-url="${u}">${txt}</a>` : txt);
+  t = t.replace(/\*\*(.+?)\*\*|__(.+?)__/g, (m, a, b) => `<strong>${a || b}</strong>`);
+  t = t.replace(/(^|[^*\w])\*(?!\s)(.+?)\*(?!\w)/g, '$1<em>$2</em>');
+  t = t.replace(/(^|[^\w])_(?!\s)(.+?)_(?!\w)/g, '$1<em>$2</em>');
+  t = t.replace(/~~(.+?)~~/g, '<del>$1</del>');
+  return t.replace(/\u0002(\d+)\u0002/g, (_, i) => keep[+i]);
+}
+function mdHtml(src) {
+  let s = String(src || '').replace(/\r\n?/g, '\n');
+  const blocks = [];
+  s = s.replace(/```[^\n]*\n([\s\S]*?)```/g, (_, c) => '\n\u0001' + (blocks.push(`<pre><code>${esc(c.replace(/\n$/, ''))}</code></pre>`) - 1) + '\u0001\n');
+  s = s.replace(/<!--[\s\S]*?-->/g, '');
+  s = s.replace(/<img\b[^>]*>/gi, tag => { const m = /\bsrc\s*=\s*["']([^"']+)["']/i.exec(tag); return m && safeHttps(m[1]) ? `![](${m[1]})` : ''; });
+  s = s.replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi, (_, n, t) => `\n\n${'#'.repeat(+n)} ${t.replace(/<[^>]*>/g, '').trim()}\n\n`);
+  s = s.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(?:p|div|li|tr|details|summary|center|ul|ol|table|blockquote)>/gi, '\n\n');
+  s = s.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+  s = esc(s);
+  const lines = s.split('\n'), out = [];
+  let i = 0, para = [];
+  const flush = () => { if (para.length) { out.push(`<p>${mdInline(para.join(' '))}</p>`); para = []; } };
+  const cells = l => l.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+  const item = /^\s*([-*+]|\d+[.)])\s+/;
+  while (i < lines.length) {
+    const t = lines[i].trim();
+    let m;
+    if (!t) { flush(); i++; continue; }
+    if ((m = /^\u0001(\d+)\u0001$/.exec(t))) { flush(); out.push(blocks[+m[1]]); i++; continue; }
+    if ((m = /^(#{1,6})\s+(.+?)\s*#*$/.exec(t))) { flush(); out.push(`<h${m[1].length}>${mdInline(m[2])}</h${m[1].length}>`); i++; continue; }
+    if (/^([-*_])(\s*\1){2,}$/.test(t)) { flush(); out.push('<hr>'); i++; continue; }
+    if (/^&gt;/.test(t)) { flush(); const q = []; while (i < lines.length && /^\s*&gt;/.test(lines[i])) q.push(lines[i++].replace(/^\s*&gt;\s?/, '')); out.push(`<blockquote>${mdInline(q.join(' '))}</blockquote>`); continue; }
+    if (item.test(lines[i])) {
+      flush(); const ord = /^\d/.test(t), items = [];
+      while (i < lines.length && item.test(lines[i])) items.push(lines[i++].replace(item, ''));
+      const tag = ord ? 'ol' : 'ul';
+      out.push(`<${tag}>${items.map(x => `<li>${mdInline(x)}</li>`).join('')}</${tag}>`); continue;
+    }
+    if (t.includes('|') && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(lines[i + 1])) {
+      flush(); const head = cells(lines[i]); i += 2; const rows = [];
+      while (i < lines.length && lines[i].trim() && lines[i].includes('|')) rows.push(cells(lines[i++]));
+      out.push(`<div class="tbl"><table><thead><tr>${head.map(c => `<th>${mdInline(c)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${mdInline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+      continue;
+    }
+    para.push(t); i++;
+  }
+  flush();
+  return out.join('');
+}
+/* md-end */
+
+/* ---- страница мода (Modrinth) ---- */
+let _tagRu;
+const tagName = c => (_tagRu ||= Object.fromEntries(Object.values(BR_TAGS).flat()))[c] || c;
+const fmtDate = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('ru-RU', { year: 'numeric', month: 'short', day: 'numeric' }); };
+const SIDE = { required: 'нужен', optional: 'по желанию', unsupported: 'не нужен', unknown: '—' };
+async function openProject(h) {
+  const B = S.br, D = B.detail = { h, tab: 'desc', p: null, v: null, err: '', verr: '' };
+  drawDetail();
+  $('#br-detail')?.scrollIntoView?.({ block: 'start' });
+  try { const p = await api('modrinth.project', { id: h.project_id }); if (B.detail !== D) return; D.p = p; }
+  catch (e) { if (B.detail !== D) return; D.err = e.message; }
+  drawDetail();
+}
+async function loadVersions() {
+  const B = S.br, D = B.detail; if (!D || D.v) return;
+  try { const d = await api('modrinth.versions', { id: D.h.project_id, mc: B.mc, loader: B.type === 'mod' ? B.loader : '', type: B.type }); if (B.detail !== D) return; D.v = d.versions; }
+  catch (e) { if (B.detail !== D) return; D.verr = e.message; }
+  drawDetail();
+}
+function drawDetail() {
+  const B = S.br, D = B && B.detail, box = $('#br-detail'), list = $('#br-list');
+  if (!box || !list) return;
+  if (!D) { box.hidden = true; box.innerHTML = ''; list.hidden = false; return; }
+  list.hidden = true; box.hidden = false;
+  const h = D.h, p = D.p, id = h.project_id;
+  const done = B.installed.has(id), busy = B.busy.has(id);
+  const label = B.type === 'modpack' ? 'Создать сборку' : B.ctx ? 'Установить' : 'Установить…';
+  const btn = busy ? '<button class="btn primary" disabled><span class="spin"></span> Ставлю…</button>'
+    : done ? `<button class="btn" disabled>${ic('check', 16)} Установлено</button>`
+      : `<button class="btn primary" data-act="br-install" data-pid="${esc(id)}">${ic('download', 16)} ${label}</button>`;
+  const chips = ((p && p.categories) || h.categories || []).map(c => `<span class="chip">${esc(tagName(c))}</span>`).join('');
+  const tabs = [['desc', 'Описание']].concat(p && p.gallery.length ? [['gallery', `Галерея (${p.gallery.length})`]] : [], [['versions', 'Версии']]);
+  const spin = '<div class="empty"><span class="spin"></span></div>';
+  let body = '';
+  if (D.tab === 'desc') {
+    if (D.err) body = `<div class="empty"><h3>Не получилось открыть страницу</h3><p>${esc(D.err)}</p></div>`;
+    else if (!p) body = spin;
+    else {
+      const link = (u, t) => u ? `<button class="btn sm" data-act="open-link" data-url="${esc(u)}">${ic('link', 13)} ${t}</button>` : '';
+      const links = [link(p.links.source, 'Исходный код'), link(p.links.issues, 'Ошибки'), link(p.links.wiki, 'Вики'), link(p.links.discord, 'Discord')].join('');
+      const gv = p.game_versions.slice(-8).reverse();
+      body = `<div class="proj-cols"><div class="md panel">${mdHtml(p.body) || '<p class="hint">У проекта нет описания.</p>'}</div>
+        <aside class="proj-side">
+          <div class="panel"><h4>Совместимость</h4>${p.loaders.length ? `<div class="chips">${p.loaders.map(l => `<span class="chip">${esc(LOADER_NAMES[l] || l)}</span>`).join('')}</div>` : ''}${gv.length ? `<div class="chips" style="margin-top:8px">${gv.map(v => `<span class="chip">${esc(v)}</span>`).join('')}</div>` : ''}
+            ${p.project_type === 'mod' ? `<p class="hint" style="margin-top:10px">Клиент: ${SIDE[p.client_side] || '—'}<br>Сервер: ${SIDE[p.server_side] || '—'}</p>` : ''}</div>
+          ${links ? `<div class="panel"><h4>Ссылки</h4><div class="chips">${links}</div></div>` : ''}
+          <div class="panel"><h4>Сведения</h4><p class="hint">${p.license ? 'Лицензия: ' + esc(p.license) + '<br>' : ''}${p.published ? 'Создан: ' + esc(fmtDate(p.published)) + '<br>' : ''}${p.updated ? 'Обновлён: ' + esc(fmtDate(p.updated)) : ''}</p></div>
+        </aside></div>`;
+    }
+  } else if (D.tab === 'gallery') {
+    body = `<div class="gallery">${p.gallery.map(g => `<figure><button type="button" class="shot" data-act="br-img" data-url="${esc(g.url)}" aria-label="Открыть: ${esc(g.title || 'картинка')}"><img src="${esc(g.url)}" alt="" loading="lazy"></button>${g.title ? `<figcaption>${esc(g.title)}</figcaption>` : ''}</figure>`).join('')}</div>`;
+  } else {
+    if (D.verr) body = `<div class="empty"><h3>Не получилось загрузить версии</h3><p>${esc(D.verr)}</p></div>`;
+    else if (!D.v) body = spin;
+    else {
+      const note = B.ctx ? `Показаны версии для ${esc(B.mc)}${B.loader ? ' и ' + esc(LOADER_NAMES[B.loader] || B.loader) : ''}. Установка берёт последнюю подходящую.` : 'Установка берёт последнюю подходящую версию.';
+      const TYPE = { release: ['Релиз', 'ok'], beta: ['Бета', 'warn'], alpha: ['Альфа', 'bad'] };
+      body = `<p class="hint" style="margin-bottom:10px">${note}</p>` + (D.v.length ? `<div class="vers">${D.v.map(v => {
+        const t = TYPE[v.version_type] || TYPE.release, gv = v.game_versions.slice(-4);
+        return `<details class="ver"><summary><span class="vt ${t[1]}">${t[0]}</span><b>${esc(v.version_number || v.name)}</b><span class="vm">${gv.map(x => `<span class="chip">${esc(x)}</span>`).join('')}${v.game_versions.length > 4 ? `<span class="chip">+${v.game_versions.length - 4}</span>` : ''}${v.loaders.map(l => `<span class="chip">${esc(LOADER_NAMES[l] || l)}</span>`).join('')}</span><span class="vd">${esc(fmtDate(v.date_published))} · ${ic('download', 12)} ${esc(fmtNum(v.downloads))}</span></summary>
+          <div class="md vlog">${v.changelog ? mdHtml(v.changelog) : '<p class="hint">Описания изменений нет.</p>'}</div></details>`;
+      }).join('')}</div>` : '<div class="empty"><h3>Подходящих версий нет</h3><p>Для выбранной версии игры и загрузчика этого проекта нет.</p></div>');
+    }
+  }
+  box.innerHTML = `<button class="btn ghost sm" data-act="br-back">${ic('back', 14)} Назад к списку</button>
+    <div class="proj-head"><div class="proj-icon">${h.icon_url ? `<img src="${esc(h.icon_url)}" alt="">` : art(id)}</div>
+      <div class="proj-info"><h2>${esc(h.title)}<span class="by">${esc(h.author)}</span></h2><p>${esc((p && p.description) || h.description)}</p>
+        <div class="proj-stats"><span>${ic('download', 14)} ${esc(fmtNum((p && p.downloads) || h.downloads))} скачиваний</span>${p ? `<span>${ic('heart', 14)} ${esc(fmtNum(p.followers))} подписчиков</span>` : ''}</div>
+        <div class="chips">${chips}</div></div>
+      <div class="proj-act">${btn}<button class="btn ghost sm" data-act="open-url" data-url="https://modrinth.com/project/${esc(id)}">${ic('link', 13)} На сайте</button></div></div>
+    <div class="seg proj-tabs">${tabs.map(([k, t]) => `<button data-act="br-tab" data-t="${k}" class="${D.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+    <div class="proj-body">${body}</div>`;
+}
 function tabAdd(it, el) { browseInto(el, it); }
 function browseInto(el, it) {
   const B = S.br = {
@@ -638,7 +769,7 @@ function browseInto(el, it) {
   };
   const types = [['mod', 'Моды'], ['resourcepack', 'Ресурспаки'], ['shader', 'Шейдеры']].concat(it ? [] : [['modpack', 'Сборки']]);
   const vanilla = it && (it.loader?.type || 'vanilla') === 'vanilla';
-  el.innerHTML = `<div class="filters" style="margin-bottom:10px"><div class="seg" id="br-src"><button data-act="br-src" data-s="modrinth" class="on">Modrinth</button><button data-act="br-src" data-s="curseforge">CurseForge</button></div></div>
+  el.innerHTML = `<div id="br-list"><div class="filters" style="margin-bottom:10px"><div class="seg" id="br-src"><button data-act="br-src" data-s="modrinth" class="on">Modrinth</button><button data-act="br-src" data-s="curseforge">CurseForge</button></div></div>
     <div class="search big">${ic('search', 18)}<input type="search" id="br-q" placeholder="Искать на Modrinth" autocomplete="off"></div>
     <div class="filters"><div class="seg" id="br-types">${types.map(([k, t]) => `<button data-act="br-type" data-t="${k}" class="${k === 'mod' ? 'on' : ''}">${t}</button>`).join('')}</div><span style="flex:1"></span>
       ${it ? `<span class="chip">для ${esc(it.mc_version)}</span>${loaderChip(it)}`
@@ -646,7 +777,7 @@ function browseInto(el, it) {
       <select id="br-sort" aria-label="Сортировка">${[['relevance', 'По релевантности'], ['downloads', 'По загрузкам'], ['newest', 'Новые'], ['updated', 'Обновлённые']].map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></div>
     <div class="tags" id="br-tags"></div>
     ${vanilla ? '<div class="note warn">У сборки не выбран загрузчик, поэтому моды установить нельзя. Выбери Fabric, Quilt, Forge или NeoForge на вкладке «Настройки». Ресурспаки и шейдеры ставятся и так.</div>' : ''}
-    <div class="results" id="br-results"></div><div style="text-align:center;margin:18px 0"><button class="btn" id="br-more" data-act="br-more" hidden>Показать ещё</button></div>`;
+    <div class="results" id="br-results"></div><div style="text-align:center;margin:18px 0"><button class="btn" id="br-more" data-act="br-more" hidden>Показать ещё</button></div></div><div id="br-detail" hidden></div>`;
   if (it) api('content.installed', { key: it.key }).then(d => { B.installed = new Set(d.project_ids); drawHits(); }).catch(() => { });
   else api('meta.mc_versions', { snapshots: false }).then(d => { $('#br-mc').insertAdjacentHTML('beforeend', d.versions.slice(0, 60).map(v => `<option>${esc(v)}</option>`).join('')); }).catch(() => { });
   drawTags();
@@ -678,11 +809,13 @@ function drawHits() {
     const btn = h.blocked ? `<button class="btn" data-act="open-url" data-url="${esc(h.site_url)}" title="Автор запретил установку из сторонних лаунчеров">${ic('link', 16)} Скачать на сайте</button>` : busy ? '<button class="btn primary" disabled><span class="spin"></span> Ставлю…</button>'
       : done ? `<button class="btn" disabled>${ic('check', 16)} Установлено</button>`
         : `<button class="btn primary" data-act="br-install" data-pid="${esc(h.project_id)}">${ic('download', 16)} ${label}</button>`;
-    return `<article class="hit"><div class="hit-icon">${h.icon_url ? `<img src="${esc(h.icon_url)}" alt="" loading="lazy" data-seed="${esc(h.project_id)}">` : art(h.project_id)}</div>
-      <div class="hit-main"><h3>${esc(h.title)}<span class="by">${esc(h.author)}</span></h3><p>${esc(h.description)}</p>
+    const open = B.src === 'modrinth' ? ` data-act="br-open" data-pid="${esc(h.project_id)}"` : '';
+    return `<article class="hit"><div class="hit-icon ${open ? 'link' : ''}"${open}>${h.icon_url ? `<img src="${esc(h.icon_url)}" alt="" loading="lazy" data-seed="${esc(h.project_id)}">` : art(h.project_id)}</div>
+      <div class="hit-main"><h3>${open ? `<a href="#" class="plink"${open}>${esc(h.title)}</a>` : esc(h.title)}<span class="by">${esc(h.author)}</span></h3><p>${esc(h.description)}</p>
         <div class="chips">${h.categories.map(c => `<span class="chip">${esc(c)}</span>`).join('')}<button class="btn ghost sm site" data-act="open-url" data-url="${B.src === 'curseforge' ? esc(h.site_url) : 'https://modrinth.com/project/' + esc(h.project_id)}">${ic('link', 13)} На сайте</button></div></div>
       <div class="hit-side">${btn}<span class="dl">${ic('download', 13)} ${esc(fmtNum(h.downloads))}</span></div></article>`;
   }).join('');
+  if (B.detail) drawDetail();
   more.hidden = B.hits.length >= B.total;
   more.disabled = B.loading;
 }
@@ -1300,6 +1433,15 @@ const A = {
   'cape-set': el => { const acc = skinAcc(); return skinRun(() => api('skins.cape', { uuid: acc.uuid, cape_id: el.dataset.id }), el.dataset.id ? 'Плащ надет' : 'Плащ снят'); },
   'skin-save-current': async () => { const acc = skinAcc(); await api('skins.import_current', { uuid: acc.uuid }); toast('Скин сохранён в библиотеку', 'ok'); await loadSkins(false); },
   'br-more': () => brSearch(false),
+  'br-open': el => { const h = S.br.hits.find(x => x.project_id === el.dataset.pid); if (h) openProject(h); },
+  'br-back': () => { S.br.detail = null; drawDetail(); },
+  'br-tab': el => { const D = S.br.detail; if (!D) return; D.tab = el.dataset.t; drawDetail(); if (D.tab === 'versions') loadVersions(); },
+  'br-img': el => {
+    const o = document.createElement('div'); o.className = 'lightbox'; o.setAttribute('data-act', 'br-img-close'); o.innerHTML = `<img src="${esc(el.dataset.url)}" alt="">`;
+    document.body.appendChild(o);
+  },
+  'br-img-close': el => el.remove(),
+  'open-link': el => api('app.open_link', { url: el.dataset.url }).catch(e => toast(e.message, 'error')),
   'br-retry': () => brSearch(true),
   'br-install': async el => {
     const B = S.br, h = B.hits.find(x => x.project_id === el.dataset.pid);
