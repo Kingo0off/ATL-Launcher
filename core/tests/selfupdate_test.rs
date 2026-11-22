@@ -71,11 +71,3 @@ fn check_and_download() {
     assert!(selfupdate::download(&bad, &dest2).is_err());
     assert!(!dest2.exists());
 }
-
-#[test]
-fn old_asset_name_is_fallback() {
-    let rel = json!({"tag_name": "v3.9.2", "assets": [
-        {"name": "FriendLauncher.exe", "size": 4, "browser_download_url": "http://x/old.exe"}]});
-    let i = selfupdate::parse_release(&rel).expect("запасное имя файла");
-    assert_eq!(i.url, "http://x/old.exe");
-}

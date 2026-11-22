@@ -5,8 +5,6 @@ use sha2::{Digest, Sha256};
 use std::path::Path;
 
 pub const ASSET: &str = "Voxel.exe";
-/// Старое имя файла в релизах: его ищут прежние версии, и оно остаётся запасным.
-pub const OLD_ASSET: &str = "FriendLauncher.exe";
 
 #[derive(Clone, Debug)]
 pub struct Info {
@@ -44,8 +42,7 @@ pub fn newer(a: &str, b: &str) -> bool {
 pub fn parse_release(js: &Value) -> Option<Info> {
     let tag = js.get("tag_name")?.as_str()?;
     let assets = js.get("assets")?.as_array()?;
-    let by_name = |want: &str| assets.iter().find(|a| a.get("name").and_then(|n| n.as_str()) == Some(want));
-    let asset = by_name(ASSET).or_else(|| by_name(OLD_ASSET))?;
+    let asset = assets.iter().find(|a| a.get("name").and_then(|n| n.as_str()) == Some(ASSET))?;
     let sha = asset
         .get("digest")
         .and_then(|d| d.as_str())
@@ -104,6 +101,7 @@ pub fn download(info: &Info, dest: &Path) -> Result<(), String> {
 pub fn cleanup() {
     if let Ok(cur) = std::env::current_exe() {
         let _ = std::fs::remove_file(cur.with_extension("old"));
+        let _ = std::fs::remove_file(cur.with_file_name("Voxel.old"));
     }
 }
 
@@ -111,12 +109,19 @@ pub fn cleanup() {
 #[cfg(windows)]
 pub fn apply(new: &Path) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
-    let cur = std::env::current_exe().map_err(|e| e.to_string())?;
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    // Если файл лаунчера переименовали или переложили, пока он работал, прежнего пути уже нет.
+    // Тогда кладём новую версию рядом под именем Voxel.exe.
+    let cur = if exe.exists() { exe } else { exe.with_file_name("Voxel.exe") };
     let old = cur.with_extension("old");
     let _ = std::fs::remove_file(&old);
-    std::fs::rename(&cur, &old).map_err(|e| format!("Не удалось заменить файл лаунчера: {}", e))?;
+    if cur.exists() {
+        std::fs::rename(&cur, &old).map_err(|e| format!("Не удалось заменить файл лаунчера: {}", e))?;
+    }
     if let Err(e) = std::fs::copy(new, &cur) {
-        let _ = std::fs::rename(&old, &cur);
+        if old.exists() {
+            let _ = std::fs::rename(&old, &cur);
+        }
         return Err(format!("Не удалось записать новую версию: {}", e));
     }
     let cmd = format!("/C ping -n 4 127.0.0.1 >nul & start \"\" \"{}\"", cur.display());

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-/// Папка `Voxel`. Если осталась папка прежнего названия `FriendLauncher`, она переименовывается
+/// Папка `Voxel`. Если осталась папка под прежним названием, она переименовывается
 /// (сборки, миры и аккаунты сохраняются). Не вышло переименовать: работаем со старой папкой.
 fn pick(root: PathBuf) -> PathBuf {
     let new = root.join("Voxel");
@@ -11,9 +11,9 @@ fn pick(root: PathBuf) -> PathBuf {
     new
 }
 
-/// Папка данных. Формат тот же, что у Python-версии и у FriendLauncher, поэтому сборки и настройки общие.
+/// Папка данных. Формат тот же, что у Python-версии, поэтому сборки и настройки общие.
 pub fn data_dir() -> PathBuf {
-    let base = if let Ok(p) = std::env::var("FRIENDLAUNCHER_HOME") {
+    let base = if let Ok(p) = std::env::var("VOXEL_HOME") {
         PathBuf::from(p)
     } else if cfg!(windows) {
         let root = std::env::var("APPDATA")

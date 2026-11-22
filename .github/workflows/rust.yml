@@ -38,9 +38,7 @@ jobs:
           set -o pipefail
           cargo build --release -p friendlauncher --color never 2>&1 | tee "$RUNNER_TEMP/build.log"
       - name: Имя файла для скачивания
-        run: |
-          cp target/release/friendlauncher.exe Voxel.exe
-          cp target/release/friendlauncher.exe FriendLauncher.exe
+        run: cp target/release/friendlauncher.exe Voxel.exe
       - uses: actions/upload-artifact@v4
         with:
           name: Voxel-rust-exe
@@ -53,9 +51,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Voxel ${{ env.FL_VERSION }}
           make_latest: "true"
-          files: |
-            Voxel.exe
-            FriendLauncher.exe
+          files: Voxel.exe
       - name: Журнал в ветку ci-logs (чтобы разработчик мог его прочитать)
         if: always()
         run: |
