@@ -615,11 +615,26 @@ async function importFile(file) {
 function discoverHTML() {
   return `<div class="page"><div class="page-head"><div><h1>Обзор</h1><p class="sub">Моды, шейдеры, ресурспаки и готовые сборки с Modrinth и CurseForge</p></div></div><div id="browse"></div></div>`;
 }
+/* Теги Modrinth: подпись по-русски, значение для поиска по-английски */
+const BR_TAGS = {
+  mod: [['adventure', 'Приключения'], ['optimization', 'Оптимизация'], ['technology', 'Технологии'], ['magic', 'Магия'], ['worldgen', 'Генерация мира'], ['mobs', 'Мобы'], ['decoration', 'Декор'], ['equipment', 'Снаряжение'], ['food', 'Еда'], ['storage', 'Хранение'], ['transportation', 'Транспорт'], ['utility', 'Утилиты'], ['library', 'Библиотеки'], ['management', 'Управление'], ['social', 'Социальное'], ['economy', 'Экономика'], ['game-mechanics', 'Механики'], ['minigame', 'Мини-игры'], ['cursed', 'Проклятое']],
+  resourcepack: [['combat', 'Бой'], ['decoration', 'Декор'], ['modded', 'Для модов'], ['realistic', 'Реализм'], ['simplistic', 'Минимализм'], ['themed', 'Тематические'], ['tweaks', 'Твики'], ['utility', 'Утилиты'], ['vanilla-like', 'Как ваниль'], ['cursed', 'Проклятое']],
+  shader: [['cartoon', 'Мультяшные'], ['fantasy', 'Фэнтези'], ['realistic', 'Реалистичные'], ['semi-realistic', 'Полуреалистичные'], ['vanilla-like', 'Как ваниль'], ['cursed', 'Проклятое']],
+  modpack: [['adventure', 'Приключения'], ['challenging', 'Сложные'], ['combat', 'Бой'], ['kitchen-sink', 'Всё и сразу'], ['lightweight', 'Лёгкие'], ['magic', 'Магия'], ['multiplayer', 'Мультиплеер'], ['optimization', 'Оптимизация'], ['quests', 'Квесты'], ['technology', 'Технологии']],
+};
+function drawTags() {
+  const B = S.br, box = $('#br-tags');
+  if (!B || !box) return;
+  const list = B.src === 'modrinth' ? BR_TAGS[B.type] || [] : [];
+  box.hidden = !list.length;
+  box.innerHTML = list.map(([k, t]) => `<button type="button" class="tag ${B.tags.has(k) ? 'on' : ''}" data-act="br-tag" data-t="${k}" aria-pressed="${B.tags.has(k)}">${t}</button>`).join('')
+    + (B.tags.size ? '<button type="button" class="tag clear" data-act="br-tags-clear">Сбросить</button>' : '');
+}
 function tabAdd(it, el) { browseInto(el, it); }
 function browseInto(el, it) {
   const B = S.br = {
     ctx: it ? it.key : null, it, src: 'modrinth', type: 'mod', q: '', sort: 'relevance', mc: it ? it.mc_version : '', loader: it ? (it.loader?.type || '') : '',
-    hits: [], total: 0, loading: false, err: '', installed: new Set(), busy: new Set(), seq: 0,
+    hits: [], total: 0, loading: false, err: '', installed: new Set(), busy: new Set(), seq: 0, tags: new Set(),
   };
   const types = [['mod', 'Моды'], ['resourcepack', 'Ресурспаки'], ['shader', 'Шейдеры']].concat(it ? [] : [['modpack', 'Сборки']]);
   const vanilla = it && (it.loader?.type || 'vanilla') === 'vanilla';
@@ -629,10 +644,12 @@ function browseInto(el, it) {
       ${it ? `<span class="chip">для ${esc(it.mc_version)}</span>${loaderChip(it)}`
       : `<select id="br-mc" aria-label="Версия Minecraft"><option value="">Любая версия</option></select><select id="br-ld" aria-label="Загрузчик"><option value="">Любой загрузчик</option>${['fabric', 'quilt', 'forge', 'neoforge'].map(k => `<option value="${k}">${LOADER_NAMES[k]}</option>`).join('')}</select>`}
       <select id="br-sort" aria-label="Сортировка">${[['relevance', 'По релевантности'], ['downloads', 'По загрузкам'], ['newest', 'Новые'], ['updated', 'Обновлённые']].map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></div>
+    <div class="tags" id="br-tags"></div>
     ${vanilla ? '<div class="note warn">У сборки не выбран загрузчик, поэтому моды установить нельзя. Выбери Fabric, Quilt, Forge или NeoForge на вкладке «Настройки». Ресурспаки и шейдеры ставятся и так.</div>' : ''}
     <div class="results" id="br-results"></div><div style="text-align:center;margin:18px 0"><button class="btn" id="br-more" data-act="br-more" hidden>Показать ещё</button></div>`;
   if (it) api('content.installed', { key: it.key }).then(d => { B.installed = new Set(d.project_ids); drawHits(); }).catch(() => { });
   else api('meta.mc_versions', { snapshots: false }).then(d => { $('#br-mc').insertAdjacentHTML('beforeend', d.versions.slice(0, 60).map(v => `<option>${esc(v)}</option>`).join('')); }).catch(() => { });
+  drawTags();
   brSearch(true);
 }
 async function brSearch(reset) {
@@ -641,7 +658,7 @@ async function brSearch(reset) {
   if (reset) { B.hits = []; B.total = 0; }
   B.loading = true; B.err = ''; drawHits();
   try {
-    const d = await api(B.src + '.search', { query: B.q, type: B.type, mc: B.mc, loader: B.type === 'mod' || B.type === 'modpack' ? B.loader : '', sort: B.sort, offset: B.hits.length });
+    const d = await api(B.src + '.search', { query: B.q, type: B.type, mc: B.mc, loader: B.type === 'mod' || B.type === 'modpack' ? B.loader : '', sort: B.sort, offset: B.hits.length, tags: B.src === 'modrinth' ? [...B.tags] : [] });
     if (my !== B.seq) return;
     B.hits = B.hits.concat(d.hits); B.total = d.total;
   } catch (e) { if (my !== B.seq) return; B.err = e.message; }
@@ -1251,8 +1268,10 @@ const A = {
   },
   'log-copy': async () => { try { await navigator.clipboard.writeText($('#logbox').innerText); toast('Журнал скопирован', 'ok'); } catch (e) { toast('Не удалось скопировать', 'error'); } },
   /* Modrinth */
-  'br-type': el => { S.br.type = el.dataset.t; $$('#br-types button').forEach(b => b.classList.toggle('on', b === el)); brSearch(true); },
-  'br-src': el => { const B = S.br; if (B.src === el.dataset.s) return; B.src = el.dataset.s; $$('#br-src button').forEach(b => b.classList.toggle('on', b === el)); $('#br-q').placeholder = 'Искать на ' + (B.src === 'curseforge' ? 'CurseForge' : 'Modrinth'); brSearch(true); },
+  'br-type': el => { S.br.type = el.dataset.t; S.br.tags.clear(); drawTags(); $$('#br-types button').forEach(b => b.classList.toggle('on', b === el)); brSearch(true); },
+  'br-tag': el => { const B = S.br, t = el.dataset.t; B.tags.has(t) ? B.tags.delete(t) : B.tags.add(t); drawTags(); brSearch(true); },
+  'br-tags-clear': () => { S.br.tags.clear(); drawTags(); brSearch(true); },
+  'br-src': el => { const B = S.br; if (B.src === el.dataset.s) return; B.src = el.dataset.s; B.tags.clear(); drawTags(); $$('#br-src button').forEach(b => b.classList.toggle('on', b === el)); $('#br-q').placeholder = 'Искать на ' + (B.src === 'curseforge' ? 'CurseForge' : 'Modrinth'); brSearch(true); },
   /* скриншоты и скины */
   'shots-reload': () => loadShots(),
   'shot-open': el => shotViewer(+el.dataset.i),

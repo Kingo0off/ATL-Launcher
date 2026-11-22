@@ -61,7 +61,7 @@ fn modrinth_search_install_with_deps_and_updates() {
     let base2 = mock(f);
     let ep = Endpoints { modrinth: format!("{}/mr", base2), ..Endpoints::default() };
 
-    let s = catalog::mr_search(&ep, "a", "mod", "1.20.1", "fabric", "relevance", 0, 20).unwrap();
+    let s = catalog::mr_search(&ep, "a", "mod", "1.20.1", "fabric", &["adventure".to_string()], "relevance", 0, 20).unwrap();
     assert_eq!(s["hits"][0]["title"], "A");
     assert_eq!(s["total"], 1);
 

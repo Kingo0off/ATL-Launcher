@@ -432,3 +432,10 @@ canvas.bad { opacity: .2; }
 .rail-btn.support:hover svg { animation: beat .7s ease-in-out; }
 @keyframes beat { 30% { transform: scale(1.22); } 60% { transform: scale(.96); } }
 @media (prefers-reduced-motion: reduce) { .rail-btn.support:hover svg { animation: none; } }
+
+/* теги в поиске модов */
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 12px; }
+.tag { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--s1); color: var(--muted); font-size: 12.5px; line-height: 1.2; }
+.tag:hover { border-color: var(--accent); color: var(--text); }
+.tag.on { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-2); }
+.tag.clear { border-style: dashed; color: var(--faint); }

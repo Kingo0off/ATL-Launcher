@@ -54,7 +54,21 @@ pub fn mr_loaders(kind: &str) -> Vec<&'static str> {
     }
 }
 
-pub fn mr_search(ep: &Endpoints, q: &str, ptype: &str, mc: &str, loader: &str, sort: &str, offset: u64, limit: u64) -> Result<Value, String> {
+/// Теги поиска оставляем только безопасные (латиница, цифры, дефис), без повторов и не больше шести.
+pub fn clean_tags(tags: &[String]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for t in tags {
+        let t = t.trim().to_lowercase();
+        let ok = !t.is_empty() && t.len() <= 32 && t.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+        if ok && !out.contains(&t) && out.len() < 6 {
+            out.push(t);
+        }
+    }
+    out
+}
+
+/// Условия поиска Modrinth. Каждый тег — отдельное условие, поэтому теги складываются через «И».
+pub fn mr_facets(ptype: &str, mc: &str, loader: &str, tags: &[String]) -> Vec<Value> {
     let mut facets: Vec<Value> = vec![json!([format!("project_type:{}", ptype)])];
     if !mc.is_empty() {
         facets.push(json!([format!("versions:{}", mc)]));
@@ -64,6 +78,14 @@ pub fn mr_search(ep: &Endpoints, q: &str, ptype: &str, mc: &str, loader: &str, s
         let ls: Vec<String> = if ls.is_empty() { vec![loader.to_string()] } else { ls.iter().map(|s| s.to_string()).collect() };
         facets.push(json!(ls.iter().map(|x| format!("categories:{}", x)).collect::<Vec<_>>()));
     }
+    for t in clean_tags(tags) {
+        facets.push(json!([format!("categories:{}", t)]));
+    }
+    facets
+}
+
+pub fn mr_search(ep: &Endpoints, q: &str, ptype: &str, mc: &str, loader: &str, tags: &[String], sort: &str, offset: u64, limit: u64) -> Result<Value, String> {
+    let facets = mr_facets(ptype, mc, loader, tags);
     let data = mr_get(
         ep,
         "/search",

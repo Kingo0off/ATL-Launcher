@@ -833,7 +833,10 @@ impl Api {
                 let sort = if popt(p, "sort").is_empty() { "relevance" } else { popt(p, "sort") };
                 let offset = p["offset"].as_u64().unwrap_or(0);
                 Ok(if name == "modrinth.search" {
-                    crate::catalog::mr_search(&self.endpoints, popt(p, "query"), ptype, popt(p, "mc"), popt(p, "loader"), sort, offset, 20)?
+                    {
+                        let tags: Vec<String> = p["tags"].as_array().map(|a| a.iter().filter_map(|t| t.as_str().map(String::from)).collect()).unwrap_or_default();
+                        crate::catalog::mr_search(&self.endpoints, popt(p, "query"), ptype, popt(p, "mc"), popt(p, "loader"), &tags, sort, offset, 20)?
+                    }
                 } else {
                     crate::catalog::cf_search(&self.endpoints, &self.cf_key(), popt(p, "query"), ptype, popt(p, "mc"), popt(p, "loader"), sort, offset, 20)?
                 })
