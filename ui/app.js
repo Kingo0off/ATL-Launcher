@@ -74,6 +74,7 @@ const IC = {
   check: '<path d="M20 6 9 17l-5-5"/>',
   refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5"/>',
   terminal: '<path d="m4 17 6-6-6-6M12 19h8"/>',
+  heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
   globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
   server: '<rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/>',
   more: '<circle cx="5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="19" cy="12" r="1.2" fill="currentColor"/>',
@@ -288,6 +289,7 @@ function renderRail(r) {
     ${item('network', 'globe', 'Сеть', r.name === 'network')}
     ${item('settings', 'sliders', 'Настройки', r.name === 'settings')}
     <div class="grow"></div>
+    <button class="rail-btn support" data-act="open-url" data-url="https://boosty.to/kingo0offf" title="Поддержать проект на Boosty">${ic('heart', 22)}<span>Поддержать</span></button>
     <button class="acct-btn ${acc ? '' : 'no-acct'}" data-act="acct-menu" title="${acc ? esc(acc.name) : 'Добавить аккаунт'}">${acc ? avatar(acc) : ic('user', 22)}</button>`;
   hydrateAvatars($('#rail'));
 }
@@ -976,7 +978,9 @@ function settingsHTML() {
         <p class="hint" style="margin-top:10px">Изменения применяются сразу и запоминаются.</p></section>`;
   } else if (tab === 'about') {
     const u = S.upd || {};
-    body = `<section class="panel"><h2 class="sec">Версия</h2><p>Установлена: <b>${esc(S.st.version)}</b></p>
+    body = `<section class="panel support-panel"><h2 class="sec">Поддержать проект</h2><p class="hint">Voxel делается в свободное время. Если лаунчер пригодился, можно поддержать его на Boosty.</p>
+      <div style="margin-top:14px"><button class="btn primary" data-act="open-url" data-url="https://boosty.to/kingo0offf">${ic('heart', 15)} Поддержать на Boosty</button></div></section>
+      <section class="panel"><h2 class="sec">Версия</h2><p>Установлена: <b>${esc(S.st.version)}</b></p>
       <p class="hint" style="margin-top:6px">${u.error ? esc(u.error) : u.available ? 'Доступна новая версия: <b>' + esc(u.latest) + '</b>' : u.checked ? 'У тебя последняя версия.' : 'Проверка ещё не выполнялась.'}</p>
       ${u.available && u.notes ? `<p class="hint" style="margin-top:8px;white-space:pre-wrap">${esc(u.notes)}</p>` : ''}
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">

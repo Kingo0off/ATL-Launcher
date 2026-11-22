@@ -914,7 +914,8 @@ impl Api {
             }
             "app.open_url" => {
                 let url = pstr(p, "url")?;
-                const OK: [&str; 4] = [
+                const OK: [&str; 5] = [
+                    "https://boosty.to/kingo0offf",
                     "https://modrinth.com/",
                     "https://ely.by/",
                     "https://www.curseforge.com/",
