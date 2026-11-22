@@ -846,7 +846,7 @@ impl Api {
                     crate::catalog::cf_search(&self.endpoints, &self.cf_key(), popt(p, "query"), ptype, popt(p, "mc"), popt(p, "loader"), sort, offset, 20)?
                 })
             }
-            "modrinth.project" => crate::catalog::mr_project(&self.endpoints, pstr(p, "id")?),
+            "modrinth.project" => Ok(crate::catalog::mr_project(&self.endpoints, pstr(p, "id")?)?),
             "modrinth.versions" => {
                 let ptype = if popt(p, "type").is_empty() { "mod" } else { popt(p, "type") };
                 Ok(json!({"versions": crate::catalog::mr_version_list(&self.endpoints, pstr(p, "id")?, popt(p, "mc"), popt(p, "loader"), ptype)?}))
