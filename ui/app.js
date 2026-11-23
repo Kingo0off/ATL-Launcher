@@ -1083,6 +1083,15 @@ const THEMES = {
   graphite: { name: 'Графит', accent: '#d4d4d8', play: '#facc15', bg: '#121212' },
   light: { name: 'Светлая', accent: '#6d4aff', play: '#f59e0b', bg: '#f4f5fa', text: '#1b1e2b' },
 };
+/* Стили меняют не только цвета, но и шрифты, рамки, объём и украшения. Сами стили описаны в app.css: html[data-style="..."] */
+const STYLES = {
+  '': { name: 'Стандартный', emoji: '🟣', bg: '#0f1117', accent: '#9b7cff', play: '#ffcf5a', desc: 'Современный тёмный вид Voxel' },
+  xp: { name: 'Windows XP', emoji: '🪟', bg: '#ece9d8', accent: '#245edb', play: '#3c9f2d', desc: 'Синие заголовки, бежевые окна, зелёная кнопка «Пуск»' },
+  win98: { name: 'Windows 98', emoji: '💾', bg: '#008080', accent: '#000080', play: '#c0c0c0', desc: 'Серые объёмные кнопки, бирюзовый рабочий стол' },
+  terminal: { name: 'Терминал', emoji: '🖥️', bg: '#020a04', accent: '#33ff66', play: '#ffb000', desc: 'Зелёные буквы на чёрном, строки развёртки как у старого монитора' },
+  minecraft: { name: 'Майнкрафт', emoji: '⛏️', bg: '#3b2a1a', accent: '#5d9b3a', play: '#3c8527', desc: 'Каменные кнопки, блок земли с травой' },
+  aero: { name: 'Aero', emoji: '🫧', bg: '#7ab6e8', accent: '#1e90ff', play: '#3cb043', desc: 'Стеклянные панели с размытием, голубое небо' },
+};
 const EVENTS = {
   newyear: { name: 'Новый год', emoji: '🎄', from: [12, 15], to: [1, 10], desc: 'Падает снег, на кнопках сугробы, сверху мигает гирлянда' },
   halloween: { name: 'Хэллоуин', emoji: '🎃', from: [10, 20], to: [11, 2], desc: 'Паутина в углах, паук на нити, летучие мыши и тыква у кнопки «Играть»' },
@@ -1105,9 +1114,10 @@ function themeBase(t) {
 function applyTheme(t) {
   applyFx(t);
   const root = document.documentElement;
+  if (t && t.style && STYLES[t.style]) root.dataset.style = t.style; else delete root.dataset.style;
   THEME_VARS.forEach(k => root.style.removeProperty(k));
   root.style.colorScheme = '';
-  if (!t || !Object.keys(t).length) return;
+  if (!t || !['preset', 'accent', 'play', 'bg', 'text'].some(k => t[k])) return;
   const c = themeBase(t), light = lumOf(c.bg) > .45, cc = light ? '#000000' : '#ffffff';
   const text = c.text || (light ? '#1b1e2b' : '#e9eaf2');
   const set = (k, v) => root.style.setProperty(k, v);
@@ -1184,9 +1194,12 @@ function settingsHTML() {
   } else if (tab === 'look') {
     const t = S.theme || {}, c = themeBase(t);
     const row = (key, label, hint) => `<div class="color-row"><div><b>${label}</b><small>${hint}</small></div><input type="color" id="th-${key}" value="${esc(c[key] || (key === 'text' ? (lumOf(c.bg) > .45 ? '#1b1e2b' : '#e9eaf2') : '#000000'))}" aria-label="${label}"></div>`;
-    const tile = ([id, p]) => `<button class="preset ${t.preset === id && !t.accent && !t.play && !t.bg && !t.text ? 'on' : ''}" data-act="theme-preset" data-id="${id}"><div class="pv" style="background:${p.bg}"><i style="background:${p.accent}"></i><i style="background:${p.play}"></i></div><span>${p.emoji ? p.emoji + ' ' : ''}${esc(p.name)}</span></button>`;
+    const stTile = ([id, p]) => `<button class="preset ${(t.style || '') === id && !t.preset && !t.accent && !t.play && !t.bg && !t.text ? 'on' : ''}" data-act="theme-style" data-id="${id}" title="${esc(p.desc)}"><div class="pv" style="background:${p.bg}"><i style="background:${p.accent}"></i><i style="background:${p.play}"></i></div><span>${p.emoji} ${esc(p.name)}</span></button>`;
+    const tile = ([id, p]) => `<button class="preset ${!t.style && t.preset === id && !t.accent && !t.play && !t.bg && !t.text ? 'on' : ''}" data-act="theme-preset" data-id="${id}"><div class="pv" style="background:${p.bg}"><i style="background:${p.accent}"></i><i style="background:${p.play}"></i></div><span>${p.emoji ? p.emoji + ' ' : ''}${esc(p.name)}</span></button>`;
     const evs = activeEvents(t);
-    body = `<section class="panel"><h2 class="sec">Готовые темы</h2><div class="presets">${Object.entries(THEMES).map(tile).join('')}</div></section>
+    body = `<section class="panel"><h2 class="sec">Стиль оформления</h2><div class="presets">${Object.entries(STYLES).map(stTile).join('')}</div>
+        <p class="hint" style="margin-top:10px">${esc((STYLES[t.style || ''] || STYLES['']).desc)}. Стиль меняет не только цвета, но и шрифты, кнопки и рамки.</p></section>
+      <section class="panel"><h2 class="sec">Цветовые темы</h2><div class="presets">${Object.entries(THEMES).map(tile).join('')}</div></section>
       <section class="panel"><h2 class="sec">Праздничные украшения</h2>
         <div class="colors">${[['', '🚫', 'Без украшений', 'Обычный вид'], ['auto', '📅', 'По датам', evs.length ? 'Сейчас идёт: ' + EVENTS[evs[0]].emoji + ' ' + EVENTS[evs[0]].name : 'Включаются сами в нужные дни: Новый год, Хэллоуин, 14 февраля'], ...Object.entries(EVENTS).map(([id, e]) => [id, e.emoji, e.name, e.desc])].map(([id, em, name, desc]) => `<label class="color-row" style="cursor:pointer"><div><b>${em} ${esc(name)}</b><small>${esc(desc)}</small></div><input type="radio" name="th-event" id="th-event-${id || 'off'}" ${(t.event || '') === id ? 'checked' : ''}></label>`).join('')}</div>
         <p class="hint" style="margin-top:10px">Одновременно работает только одно событие. «По датам»: Новый год с 15 декабря по 10 января, Хэллоуин с 20 октября по 2 ноября, 14 февраля с 10 по 15 февраля.</p></section>
@@ -1436,6 +1449,7 @@ const A = {
     catch (e) { S.upd = { ...S.upd, busy: false }; render(); toast(e.message, 'error'); }
   },
   'set-tab': el => { S.setTab = el.dataset.tab; render(); },
+  'theme-style': el => { setTheme(el.dataset.id ? { ...fxKeep(), style: el.dataset.id } : fxKeep()); render(); },
   'theme-preset': el => { setTheme({ ...fxKeep(), preset: el.dataset.id }); render(); },
   'theme-reset': () => { setTheme(fxKeep()); render(); toast('Цвета сброшены', 'ok'); },
   'acct-menu': (el, e) => { e.stopPropagation(); acctMenu($('.acct-btn')); },
@@ -1572,7 +1586,7 @@ document.addEventListener('input', e => {
   else if (id === 'mod-q') { S.modq = e.target.value; drawMods(); }
   else if (id === 'br-q') debouncedBr(e.target.value);
   else if (id && id.startsWith('th-event-')) { const v = id.slice(9), t = { ...(S.theme || {}) }; if (v === 'off') delete t.event; else t.event = v; setTheme(t); }
-  else if (id && id.startsWith('th-')) { const k = id.slice(3); setTheme({ ...(S.theme || {}), [k]: e.target.value }); }
+  else if (id && id.startsWith('th-')) { const k = id.slice(3), t = { ...(S.theme || {}), [k]: e.target.value }; delete t.style; setTheme(t); }
 });
 const debouncedBr = debounce(v => { if (S.br) { S.br.q = v.trim(); brSearch(true); } }, 350);
 document.addEventListener('change', e => {

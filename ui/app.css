@@ -523,3 +523,345 @@ button.pg:hover:not(:disabled) { border-color: var(--accent); color: var(--text)
 .tags.panel-open { padding: 12px; border: 1px solid var(--line); background: var(--s1); border-radius: 14px; margin: 0 0 12px; }
 .vsel-btn .cnt { background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 0 7px; font-size: 12px; line-height: 18px; }
 .tag .ic { vertical-align: -1px; margin-left: 2px; }
+
+/* styles-begin */
+/* ====================== СТИЛИ ОФОРМЛЕНИЯ ====================== */
+/* ---------- Windows XP (Luna) ---------- */
+html[data-style=xp] {
+  color-scheme: light;
+  --bg: #ece9d8; --rail: #245edb; --s1: #ffffff; --s2: #f3f1e6; --s3: #e0dccb;
+  --line: #7f9db9; --line-soft: #c7c3b2; --line-hi: #003c74;
+  --text: #111111; --muted: #4d4d4d; --faint: #7a7a7a;
+  --accent: #245edb; --accent-2: #0a3fb5; --accent-bg: rgba(36, 94, 219, .12); --accent-ink: #ffffff;
+  --play: #4cbb3a; --play-2: #2b8a1d; --play-ink: #ffffff;
+  --ok: #2b8a1d; --danger: #c0281c; --warn: #b36b00;
+  --font: Tahoma, "Segoe UI", Verdana, sans-serif;
+}
+html[data-style=xp] body { font-size: 13px; background: linear-gradient(#2b6bd6 0%, #7fb2f0 48%, #9ad06a 49%, #4f9a2a 100%) fixed; }
+/* окно приложения */
+html[data-style=xp] .main { background: transparent; }
+html[data-style=xp] .page { position: relative; margin: 16px auto; background: var(--bg); border: 3px solid #0831d9; border-top: 0; border-radius: 9px 9px 3px 3px; padding: 46px 28px 60px; box-shadow: 4px 6px 18px rgba(0, 0, 0, .45); max-width: 1120px; }
+html[data-style=xp] .page::before { content: "Voxel"; position: absolute; left: -3px; right: -3px; top: 0; height: 30px; padding: 0 0 0 34px; line-height: 30px; color: #fff; font-weight: 700; font-size: 14px; text-shadow: 1px 1px 0 #0a246a; border-radius: 9px 9px 0 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3l12 7v12l-12 7L4 22V10z' fill='%23ffffff'/%3E%3Cpath d='M16 3l12 7-12 7L4 10z' fill='%23bcd3ff'/%3E%3C/svg%3E") 10px 6px / 18px 18px no-repeat, linear-gradient(180deg, #0997ff 0%, #0053ee 8%, #0050ee 40%, #06f 88%, #06f 93%, #005bff 95%, #003dd7 96%, #003dd7 100%); }
+html[data-style=xp] .page::after { content: "–   ❐   ✕"; position: absolute; right: 8px; top: 4px; height: 22px; padding: 0 8px; line-height: 20px; color: #fff; font-size: 13px; letter-spacing: 2px; font-weight: 700; border: 1px solid #fff; border-radius: 3px; background: linear-gradient(180deg, #5b92f5, #2a62d9); pointer-events: none; }
+html[data-style=xp] .page-head h1 { font-size: 22px; font-weight: 700; letter-spacing: 0; color: #0a246a; }
+/* рейка — левая панель задач Explorer */
+html[data-style=xp] .rail { background: linear-gradient(180deg, #7ba2e7 0%, #6375d6 100%); border-right: 3px solid #0831d9; }
+html[data-style=xp] .rail-btn { color: #fff; border-radius: 4px; font-weight: 600; text-shadow: 0 1px 0 rgba(0, 0, 40, .5); }
+html[data-style=xp] .rail-btn:hover { background: rgba(255, 255, 255, .22); color: #fff; }
+html[data-style=xp] .rail-btn.on { background: #fff; color: #0a246a; text-shadow: none; box-shadow: inset 0 0 0 1px #0831d9; }
+html[data-style=xp] .rail-btn.on::before { display: none; }
+html[data-style=xp] .rail-btn.support { color: #ffe9a8; }
+html[data-style=xp] .acct-btn { border: 2px solid #fff; background: #d6e2fb; border-radius: 4px; color: #0a246a; }
+/* кнопки */
+html[data-style=xp] .btn, html[data-style=xp] .seg button, html[data-style=xp] .vsel-btn { border: 1px solid #003c74; border-radius: 3px; background: linear-gradient(180deg, #fff 0%, #ecebe5 85%, #d6d0c5 100%); color: #000; font-weight: 400; box-shadow: none; }
+html[data-style=xp] .btn:hover, html[data-style=xp] .vsel-btn:hover { background: linear-gradient(180deg, #fff 0%, #ecebe5 85%, #d6d0c5 100%); border-color: #003c74; box-shadow: inset 0 0 0 2px #fcc861, inset 0 -2px 0 2px #e68b2c; color: #000; }
+html[data-style=xp] .btn:active { background: #d6d0c5; box-shadow: inset 1px 1px 2px rgba(0, 0, 0, .35); }
+html[data-style=xp] .btn.primary { background: linear-gradient(180deg, #5fa3ff 0%, #2a6bea 50%, #1050d0 100%); color: #fff; font-weight: 700; text-shadow: 0 1px 0 rgba(0, 0, 60, .5); }
+html[data-style=xp] .btn.primary:hover { background: linear-gradient(180deg, #7ab4ff 0%, #3a7cf5 50%, #1a5ee0 100%); color: #fff; }
+html[data-style=xp] .btn.play { border: 1px solid #1e6a12; border-radius: 5px 16px 16px 5px; background: linear-gradient(180deg, #7ad66a 0%, #3ea92e 45%, #2b8a1d 100%); color: #fff; font-style: italic; font-weight: 800; font-size: 15px; letter-spacing: .02em; text-shadow: 1px 1px 2px #1a4a10; box-shadow: 1px 2px 4px rgba(0, 0, 0, .35); }
+html[data-style=xp] .btn.play:hover { filter: brightness(1.08); box-shadow: 1px 2px 4px rgba(0, 0, 0, .35); }
+html[data-style=xp] .btn.stop, html[data-style=xp] .btn.danger { background: linear-gradient(180deg, #fff, #ecebe5 85%, #d6d0c5); color: #c0281c; border-color: #7a1b13; }
+html[data-style=xp] .btn.ghost { background: transparent; border-color: transparent; color: #0a3fb5; text-decoration: underline; }
+html[data-style=xp] .btn.ghost:hover { background: transparent; box-shadow: none; color: #d00; }
+html[data-style=xp] .seg { background: transparent; border: 0; padding: 0; gap: 3px; }
+html[data-style=xp] .seg button.on { background: #fff; border-color: #003c74; border-top: 3px solid #f8b330; font-weight: 700; box-shadow: none; }
+/* окна-панели с синими заголовками */
+html[data-style=xp] .panel, html[data-style=xp] .hit, html[data-style=xp] .toast, html[data-style=xp] .modal { border: 1px solid #0831d9; border-radius: 6px 6px 3px 3px; background: #fff; box-shadow: 2px 3px 8px rgba(0, 0, 0, .25); }
+html[data-style=xp] .panel { padding: 0 16px 16px; overflow: hidden; }
+html[data-style=xp] .panel > h2.sec:first-child { margin: 0 -16px 14px; padding: 6px 12px; font-size: 13px; font-weight: 700; color: #fff; text-shadow: 1px 1px 0 #0a246a; background: linear-gradient(180deg, #0997ff 0%, #0053ee 8%, #0050ee 40%, #06f 88%, #003dd7 100%); }
+html[data-style=xp] .modal-head { background: linear-gradient(180deg, #0997ff 0%, #0053ee 8%, #0050ee 40%, #06f 88%, #003dd7 100%); padding: 6px 12px; border-radius: 5px 5px 0 0; }
+html[data-style=xp] .modal-head h2 { color: #fff; font-size: 13px; text-shadow: 1px 1px 0 #0a246a; letter-spacing: 0; }
+html[data-style=xp] .modal-head button { color: #fff; }
+html[data-style=xp] .backdrop { background: rgba(0, 20, 80, .45); }
+/* карточки сборок */
+html[data-style=xp] .card { border: 1px solid #7f9db9; border-radius: 4px; background: #fff; box-shadow: 1px 2px 4px rgba(0, 0, 0, .2); }
+html[data-style=xp] .card:hover { border-color: #f8b330; box-shadow: 0 0 0 2px #fcc861, 1px 2px 4px rgba(0, 0, 0, .2); }
+html[data-style=xp] .card.new-card { background: rgba(255, 255, 255, .5); border: 2px dashed #7f9db9; }
+html[data-style=xp] .card-body h3 { font-weight: 700; color: #0a246a; }
+html[data-style=xp] .card-play { border-radius: 4px 12px 12px 4px; }
+/* «обои Bliss» в главной карточке */
+html[data-style=xp] .hero { border: 1px solid #0831d9; border-radius: 6px; background: linear-gradient(180deg, #2f7be6 0%, #8fc3f6 52%, #7fcf4a 53%, #3f8f1e 100%); box-shadow: 1px 2px 5px rgba(0, 0, 0, .3); }
+html[data-style=xp] .hero::before { background: radial-gradient(120px 40px at 20% 25%, rgba(255, 255, 255, .85), transparent 70%), radial-gradient(160px 46px at 62% 18%, rgba(255, 255, 255, .7), transparent 70%); opacity: 1; }
+html[data-style=xp] .hero h2 { color: #fff; text-shadow: 1px 2px 3px rgba(0, 30, 90, .7); }
+html[data-style=xp] .hero .over { color: #fff; text-shadow: 1px 1px 2px rgba(0, 30, 90, .7); }
+/* поля */
+html[data-style=xp] input[type=text], html[data-style=xp] input[type=password], html[data-style=xp] input[type=number], html[data-style=xp] input[type=search], html[data-style=xp] select, html[data-style=xp] textarea { background-color: #fff; border: 1px solid #7f9db9; border-radius: 0; color: #000; box-shadow: none; }
+html[data-style=xp] input:focus, html[data-style=xp] select:focus, html[data-style=xp] textarea:focus { border-color: #316ac5; box-shadow: none; }
+html[data-style=xp] .search.big input { border-radius: 0; }
+html[data-style=xp] .chip, html[data-style=xp] .tag { border-radius: 2px; background: #f3f1e6; border: 1px solid #c7c3b2; color: #333; font-weight: 400; }
+html[data-style=xp] .tag.on { background: #316ac5; border-color: #1c3f94; color: #fff; }
+html[data-style=xp] .tag.clear { background: #c0281c; border-color: #7a1b13; color: #fff; box-shadow: none; }
+html[data-style=xp] .tabs { border-bottom: 1px solid #7f9db9; }
+html[data-style=xp] .tab { border: 1px solid transparent; border-bottom: 0; border-radius: 3px 3px 0 0; color: #000; font-weight: 400; }
+html[data-style=xp] .tab.on { background: #fff; border-color: #7f9db9; border-top: 3px solid #f8b330; font-weight: 700; margin-bottom: -1px; }
+html[data-style=xp] .tab.on::after { display: none; }
+html[data-style=xp] .pg { border-radius: 3px; border: 1px solid #003c74; background: linear-gradient(180deg, #fff, #ecebe5 85%, #d6d0c5); color: #000; font-weight: 400; }
+html[data-style=xp] .pg.on { background: #316ac5; color: #fff; border-color: #1c3f94; font-weight: 700; }
+html[data-style=xp] .vsel-menu { border: 1px solid #7f9db9; border-radius: 0; background: #fff; box-shadow: 2px 3px 6px rgba(0, 0, 0, .35); }
+html[data-style=xp] .vsel-menu button { color: #000; border-radius: 0; font-weight: 400; }
+html[data-style=xp] .vsel-menu button:hover, html[data-style=xp] .vsel-menu button.on, html[data-style=xp] .vsel-menu button.on:hover { background: #316ac5; color: #fff; }
+html[data-style=xp] .toast { border-left: 1px solid #0831d9; }
+html[data-style=xp] .gprog i { background: repeating-linear-gradient(90deg, #2b8a1d 0 10px, transparent 10px 13px); }
+html[data-style=xp] .preset { border-radius: 3px; border: 2px solid #c7c3b2; background: #fff; }
+html[data-style=xp] .preset.on { border-color: #316ac5; }
+html[data-style=xp] .statuspill { border-radius: 4px; background: #ffffe1; border: 1px solid #000; color: #000; }
+html[data-style=xp] .soon-tag { background: #ffe9a8; color: #000; border: 1px solid #b36b00; border-radius: 2px; }
+
+/* ---------- Windows 98 ---------- */
+html[data-style=win98] {
+  color-scheme: light;
+  --bg: #c0c0c0; --rail: #c0c0c0; --s1: #c0c0c0; --s2: #c0c0c0; --s3: #b0b0b0;
+  --line: #808080; --line-soft: #808080; --line-hi: #404040;
+  --text: #000000; --muted: #303030; --faint: #606060;
+  --accent: #000080; --accent-2: #000080; --accent-bg: rgba(0, 0, 128, .12); --accent-ink: #ffffff;
+  --play: #c0c0c0; --play-2: #c0c0c0; --play-ink: #000000;
+  --ok: #006400; --danger: #b00000; --warn: #805000;
+  --font: "MS Sans Serif", "Microsoft Sans Serif", Tahoma, Arial, sans-serif;
+}
+html[data-style=win98] body { font-size: 13px; background: #008080; }
+html[data-style=win98] * { border-radius: 0 !important; }
+html[data-style=win98] .page { position: relative; margin: 14px auto; background: #c0c0c0; padding: 38px 20px 50px; max-width: 1120px; border: 2px solid; border-color: #dfdfdf #404040 #404040 #dfdfdf; box-shadow: inset 1px 1px #fff, inset -1px -1px #808080; }
+html[data-style=win98] .page::before { content: "Voxel"; position: absolute; left: 3px; right: 3px; top: 3px; height: 20px; line-height: 20px; padding-left: 22px; color: #fff; font-weight: 700; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3l12 7v12l-12 7L4 22V10z' fill='%23ffffff'/%3E%3Cpath d='M16 3l12 7-12 7L4 10z' fill='%23c0c0ff'/%3E%3C/svg%3E") 3px 3px / 14px 14px no-repeat, linear-gradient(90deg, #000080, #1084d0); }
+html[data-style=win98] .page::after { content: "_ ▫ ✕"; position: absolute; right: 6px; top: 5px; height: 16px; line-height: 14px; padding: 0 4px; font-size: 11px; font-weight: 700; letter-spacing: 3px; color: #000; background: #c0c0c0; border: 2px solid; border-color: #fff #404040 #404040 #fff; pointer-events: none; }
+html[data-style=win98] .rail { border-right: 2px solid; border-color: #fff #404040 #404040 #fff; background: #c0c0c0; box-shadow: inset 1px 1px #dfdfdf, inset -1px -1px #808080; }
+html[data-style=win98] .rail-btn { color: #000; font-weight: 400; border: 2px solid transparent; }
+html[data-style=win98] .rail-btn:hover { background: transparent; border-color: #fff #404040 #404040 #fff; color: #000; }
+html[data-style=win98] .rail-btn.on { background: #dcdcdc; color: #000; font-weight: 700; border-color: #404040 #fff #fff #404040; }
+html[data-style=win98] .rail-btn.on::before { display: none; }
+html[data-style=win98] .rail-btn.support { color: #800000; }
+html[data-style=win98] .acct-btn { background: #c0c0c0; border: 2px solid; border-color: #404040 #fff #fff #404040; color: #000; }
+/* объёмные кнопки */
+html[data-style=win98] .btn, html[data-style=win98] .seg button, html[data-style=win98] .vsel-btn, html[data-style=win98] .pg, html[data-style=win98] .tag { background: #c0c0c0; color: #000; font-weight: 400; border: 2px solid; border-color: #fff #404040 #404040 #fff; box-shadow: inset -1px -1px #808080, inset 1px 1px #dfdfdf; }
+html[data-style=win98] .btn:hover, html[data-style=win98] .vsel-btn:hover, html[data-style=win98] button.pg:hover:not(:disabled) { background: #c0c0c0; color: #000; border-color: #fff #404040 #404040 #fff; }
+html[data-style=win98] .btn:active, html[data-style=win98] .seg button.on, html[data-style=win98] .pg.on, html[data-style=win98] .tag.on { border-color: #404040 #fff #fff #404040; box-shadow: inset 1px 1px #808080, inset -1px -1px #dfdfdf; background: #dcdcdc; color: #000; font-weight: 700; }
+html[data-style=win98] .btn.primary { font-weight: 700; outline: 1px solid #000; outline-offset: -4px; }
+html[data-style=win98] .btn.play { font-weight: 700; background: #008080; color: #fff; text-shadow: 1px 1px 0 #003c3c; }
+html[data-style=win98] .btn.play:hover { background: #009090; color: #fff; filter: none; }
+html[data-style=win98] .btn.stop, html[data-style=win98] .btn.danger { background: #c0c0c0; color: #b00000; }
+html[data-style=win98] .btn.ghost { background: transparent; border-color: transparent; box-shadow: none; text-decoration: underline; color: #000080; }
+html[data-style=win98] .btn.ghost:hover { background: transparent; border-color: transparent; color: #f00; }
+html[data-style=win98] .seg { background: transparent; border: 0; padding: 0; gap: 2px; }
+html[data-style=win98] .tag.clear { background: #c0c0c0; color: #b00000; font-weight: 700; box-shadow: inset -1px -1px #808080, inset 1px 1px #dfdfdf; }
+/* окна: серые с синей полосой заголовка */
+html[data-style=win98] .panel, html[data-style=win98] .hit, html[data-style=win98] .toast, html[data-style=win98] .modal, html[data-style=win98] .card, html[data-style=win98] .hero { background: #c0c0c0; border: 2px solid; border-color: #dfdfdf #404040 #404040 #dfdfdf; box-shadow: inset 1px 1px #fff, inset -1px -1px #808080; }
+html[data-style=win98] .panel { padding: 0 14px 14px; }
+html[data-style=win98] .panel > h2.sec:first-child, html[data-style=win98] .modal-head { margin: 0 -14px 14px; padding: 3px 6px; font-size: 13px; font-weight: 700; color: #fff; background: linear-gradient(90deg, #000080, #1084d0); letter-spacing: 0; }
+html[data-style=win98] .panel > h2.sec:first-child { margin-top: 2px; }
+html[data-style=win98] .modal-head { margin: 2px; padding: 3px 6px; }
+html[data-style=win98] .modal-head h2 { font-size: 13px; color: #fff; letter-spacing: 0; }
+html[data-style=win98] .modal-head button { color: #fff; }
+html[data-style=win98] .backdrop { background: rgba(0, 0, 0, .35); }
+html[data-style=win98] .card:hover { border-color: #fff #000 #000 #fff; }
+html[data-style=win98] .card-art { margin: 3px; border: 2px solid; border-color: #404040 #fff #fff #404040; }
+html[data-style=win98] .card-body h3, html[data-style=win98] .hero h2 { font-weight: 700; letter-spacing: 0; }
+html[data-style=win98] .card.new-card { border: 2px dashed #404040; background: transparent; box-shadow: none; }
+html[data-style=win98] .hero { background: #000080; color: #fff; }
+html[data-style=win98] .hero::before { display: none; }
+html[data-style=win98] .hero .over { color: #c0c0ff; }
+html[data-style=win98] .hero .chip { background: #c0c0c0; color: #000; border: 1px solid #fff; }
+/* поля с вдавленной рамкой */
+html[data-style=win98] input[type=text], html[data-style=win98] input[type=password], html[data-style=win98] input[type=number], html[data-style=win98] input[type=search], html[data-style=win98] select, html[data-style=win98] textarea { background-color: #fff; color: #000; border: 2px solid; border-color: #404040 #fff #fff #404040; box-shadow: inset 1px 1px #808080; }
+html[data-style=win98] input:focus, html[data-style=win98] select:focus, html[data-style=win98] textarea:focus { box-shadow: inset 1px 1px #808080; border-color: #404040 #fff #fff #404040; }
+html[data-style=win98] .chip { background: #c0c0c0; border: 1px solid #808080; color: #000; font-weight: 400; }
+html[data-style=win98] .tabs { border-bottom: 2px solid #fff; }
+html[data-style=win98] .tab { color: #000; font-weight: 400; border: 2px solid; border-color: #fff #404040 transparent #fff; background: #c0c0c0; margin-bottom: -2px; }
+html[data-style=win98] .tab.on { font-weight: 700; padding-bottom: 13px; }
+html[data-style=win98] .tab.on::after { display: none; }
+html[data-style=win98] .vsel-menu { background: #fff; border: 2px solid; border-color: #dfdfdf #404040 #404040 #dfdfdf; box-shadow: 2px 2px 0 #000; }
+html[data-style=win98] .vsel-menu button { color: #000; font-weight: 400; background: transparent; }
+html[data-style=win98] .vsel-menu button:hover, html[data-style=win98] .vsel-menu button.on, html[data-style=win98] .vsel-menu button.on:hover { background: #000080; color: #fff; }
+html[data-style=win98] .gprog i { background: repeating-linear-gradient(90deg, #000080 0 8px, transparent 8px 10px); }
+html[data-style=win98] .preset { background: #c0c0c0; border: 2px solid; border-color: #fff #404040 #404040 #fff; }
+html[data-style=win98] .preset.on { border-color: #404040 #fff #fff #404040; }
+html[data-style=win98] .statuspill { background: #ffffe1; border: 1px solid #000; color: #000; }
+html[data-style=win98] .soon-tag { background: #ffffe1; color: #000; border: 1px solid #000; }
+html[data-style=win98] ::selection { background: #000080; color: #fff; }
+
+/* ---------- Терминал ---------- */
+html[data-style=terminal] {
+  color-scheme: dark;
+  --bg: #020a04; --rail: #010603; --s1: #041208; --s2: #07200f; --s3: #0c3418;
+  --line: #14602b; --line-soft: #0d4020; --line-hi: #25a04a;
+  --text: #33ff66; --muted: #20b84a; --faint: #14802f;
+  --accent: #33ff66; --accent-2: #8dffab; --accent-bg: rgba(51, 255, 102, .12); --accent-ink: #00170a;
+  --play: #ffb000; --play-2: #e69a00; --play-ink: #1a1000;
+  --ok: #33ff66; --danger: #ff4d4d; --warn: #ffb000;
+  --font: "Cascadia Mono", "Cascadia Code", Consolas, "Lucida Console", "Courier New", monospace;
+}
+html[data-style=terminal] body { font-size: 13px; text-shadow: 0 0 5px rgba(51, 255, 102, .35); }
+html[data-style=terminal] body::after { content: ""; position: fixed; inset: 0; z-index: 400; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .28) 0 1px, transparent 1px 3px), radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, .55) 100%); }
+html[data-style=terminal] * { border-radius: 0 !important; }
+html[data-style=terminal] .page-head h1 { font-size: 24px; font-weight: 700; letter-spacing: 0; text-transform: uppercase; }
+html[data-style=terminal] .page-head h1::before { content: "> "; color: var(--play); }
+html[data-style=terminal] .page-head h1::after { content: "_"; margin-left: 4px; animation: tm-blink 1s steps(1) infinite; }
+@keyframes tm-blink { 50% { opacity: 0; } }
+html[data-style=terminal] .rail { border-right: 1px solid var(--line); }
+html[data-style=terminal] .rail-btn { font-weight: 400; text-transform: lowercase; }
+html[data-style=terminal] .rail-btn.on { background: var(--s3); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+html[data-style=terminal] .rail-btn.on::before { border-radius: 0; }
+html[data-style=terminal] .rail-btn.support { color: var(--play); }
+html[data-style=terminal] .btn, html[data-style=terminal] .seg button, html[data-style=terminal] .vsel-btn, html[data-style=terminal] .pg, html[data-style=terminal] .tag { background: transparent; border: 1px solid var(--accent); color: var(--accent); font-weight: 400; box-shadow: none; }
+html[data-style=terminal] .btn:hover, html[data-style=terminal] .vsel-btn:hover, html[data-style=terminal] button.pg:hover:not(:disabled), html[data-style=terminal] .tag:hover { background: var(--accent); color: #00170a; text-shadow: none; border-color: var(--accent); }
+html[data-style=terminal] .btn.primary, html[data-style=terminal] .seg button.on, html[data-style=terminal] .pg.on, html[data-style=terminal] .tag.on { background: var(--accent); color: #00170a; font-weight: 700; text-shadow: none; }
+html[data-style=terminal] .btn.play { background: var(--play); border-color: var(--play); color: #1a1000; font-weight: 700; text-shadow: none; text-transform: uppercase; box-shadow: 0 0 14px rgba(255, 176, 0, .55); }
+html[data-style=terminal] .btn.play:hover { background: #ffc233; filter: none; }
+html[data-style=terminal] .btn.danger, html[data-style=terminal] .btn.stop, html[data-style=terminal] .tag.clear { color: #ff4d4d; border-color: #ff4d4d; background: transparent; box-shadow: none; }
+html[data-style=terminal] .btn.danger:hover, html[data-style=terminal] .tag.clear:hover { background: #ff4d4d; color: #1a0000; }
+html[data-style=terminal] .btn.ghost { border-color: transparent; color: var(--muted); }
+html[data-style=terminal] .seg { background: transparent; border: 1px solid var(--line); padding: 0; gap: 0; }
+html[data-style=terminal] .seg button { border: 0; }
+html[data-style=terminal] .panel, html[data-style=terminal] .hit, html[data-style=terminal] .card, html[data-style=terminal] .hero, html[data-style=terminal] .modal, html[data-style=terminal] .toast { background: var(--s1); border: 1px solid var(--line); box-shadow: none; }
+html[data-style=terminal] .panel > h2.sec:first-child::before, html[data-style=terminal] .modal-head h2::before { content: "# "; color: var(--play); }
+html[data-style=terminal] .card:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(51, 255, 102, .35); }
+html[data-style=terminal] .card-art { background: #000; border-bottom: 1px solid var(--line); }
+html[data-style=terminal] .card-art .pix, html[data-style=terminal] .hero .pix { filter: sepia(1) hue-rotate(60deg) saturate(3) brightness(.95); }
+html[data-style=terminal] .card.new-card { border: 1px dashed var(--accent); background: transparent; }
+html[data-style=terminal] .hero { background: linear-gradient(90deg, #031a0a, #000); }
+html[data-style=terminal] .hero::before { display: none; }
+html[data-style=terminal] .hero .over { color: var(--muted); }
+html[data-style=terminal] .hero .chip { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+html[data-style=terminal] input[type=text], html[data-style=terminal] input[type=password], html[data-style=terminal] input[type=number], html[data-style=terminal] input[type=search], html[data-style=terminal] select, html[data-style=terminal] textarea { background-color: #000; border: 1px solid var(--accent); color: var(--accent); box-shadow: none; caret-color: var(--play); }
+html[data-style=terminal] input:focus, html[data-style=terminal] select:focus, html[data-style=terminal] textarea:focus { box-shadow: 0 0 10px rgba(51, 255, 102, .5); border-color: var(--accent-2); }
+html[data-style=terminal] .chip { background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 400; }
+html[data-style=terminal] .tab { color: var(--muted); font-weight: 400; }
+html[data-style=terminal] .tab.on { color: var(--accent); background: var(--s2); }
+html[data-style=terminal] .tab.on::after { border-radius: 0; height: 2px; }
+html[data-style=terminal] .vsel-menu { background: #000; border: 1px solid var(--accent); box-shadow: 0 0 14px rgba(51, 255, 102, .35); }
+html[data-style=terminal] .vsel-menu button { color: var(--accent); font-weight: 400; }
+html[data-style=terminal] .vsel-menu button:hover, html[data-style=terminal] .vsel-menu button.on, html[data-style=terminal] .vsel-menu button.on:hover { background: var(--accent); color: #00170a; text-shadow: none; }
+html[data-style=terminal] .gprog i { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+html[data-style=terminal] .preset { background: #000; border: 1px solid var(--line); }
+html[data-style=terminal] .preset.on { border-color: var(--accent); box-shadow: 0 0 10px rgba(51, 255, 102, .4); }
+html[data-style=terminal] .backdrop { background: rgba(0, 0, 0, .8); }
+html[data-style=terminal] .statuspill { background: #000; border: 1px solid var(--accent); }
+html[data-style=terminal] ::selection { background: var(--accent); color: #00170a; }
+
+/* ---------- Майнкрафт ---------- */
+html[data-style=minecraft] {
+  color-scheme: dark;
+  --bg: #3b2a1a; --rail: #2a2a2a; --s1: #3a3a3a; --s2: #6f6f6f; --s3: #8b8b8b;
+  --line: #000000; --line-soft: #1b1b1b; --line-hi: #a0a0a0;
+  --text: #ffffff; --muted: #c6c6c6; --faint: #8b8b8b;
+  --accent: #5d9b3a; --accent-2: #8fd35f; --accent-bg: rgba(93, 155, 58, .22); --accent-ink: #ffffff;
+  --play: #4cae2c; --play-2: #2f7a18; --play-ink: #ffffff;
+  --ok: #7ed957; --danger: #ff5555; --warn: #ffaa00;
+  --font: "Minecraft", "Segoe UI Semibold", Verdana, sans-serif;
+  --dirt: #6b4a2b;
+}
+html[data-style=minecraft] body { font-size: 14px; font-weight: 600; background-color: #3b2a1a; background-image: linear-gradient(45deg, #36261a 25%, transparent 25%, transparent 75%, #36261a 75%), linear-gradient(45deg, #36261a 25%, transparent 25%, transparent 75%, #36261a 75%); background-size: 32px 32px; background-position: 0 0, 16px 16px; }
+html[data-style=minecraft] * { border-radius: 0 !important; }
+html[data-style=minecraft] h1, html[data-style=minecraft] h2, html[data-style=minecraft] h3, html[data-style=minecraft] .btn, html[data-style=minecraft] .rail-btn { text-shadow: 2px 2px 0 #3f3f3f; }
+html[data-style=minecraft] .main { background: transparent; }
+html[data-style=minecraft] .rail { background: #2a2a2a linear-gradient(90deg, #333 0 4px, transparent 4px); border-right: 4px solid #000; box-shadow: inset -2px 0 #555; }
+html[data-style=minecraft] .rail-btn { color: #fff; border: 2px solid transparent; }
+html[data-style=minecraft] .rail-btn:hover { background: #4a4a4a; color: #fff; border-color: #000; }
+html[data-style=minecraft] .rail-btn.on { background: #6f6f6f; color: #fff; border: 2px solid #000; box-shadow: inset 2px 2px #a0a0a0, inset -2px -2px #373737; }
+html[data-style=minecraft] .rail-btn.on::before { display: none; }
+html[data-style=minecraft] .rail-btn.support { color: #ff7b9c; }
+html[data-style=minecraft] .acct-btn { background: #6f6f6f; border: 2px solid #000; box-shadow: inset 2px 2px #a0a0a0, inset -2px -2px #373737; color: #fff; }
+/* кнопки как в игре */
+html[data-style=minecraft] .btn, html[data-style=minecraft] .seg button, html[data-style=minecraft] .vsel-btn, html[data-style=minecraft] .pg, html[data-style=minecraft] .tag { background: #6f6f6f; color: #fff; border: 2px solid #000; font-weight: 700; box-shadow: inset 2px 2px #a0a0a0, inset -2px -2px #373737; }
+html[data-style=minecraft] .btn:hover, html[data-style=minecraft] .vsel-btn:hover, html[data-style=minecraft] button.pg:hover:not(:disabled), html[data-style=minecraft] .tag:hover { background: #7d7d93; color: #ffffa0; border-color: #000; box-shadow: inset 2px 2px #b0b0c8, inset -2px -2px #40405a; }
+html[data-style=minecraft] .btn:active { box-shadow: inset 2px 2px #373737, inset -2px -2px #a0a0a0; }
+html[data-style=minecraft] .btn.primary, html[data-style=minecraft] .pg.on, html[data-style=minecraft] .tag.on, html[data-style=minecraft] .seg button.on { background: #5d9b3a; color: #fff; box-shadow: inset 2px 2px #8fd35f, inset -2px -2px #355a20; }
+html[data-style=minecraft] .btn.primary:hover { background: #6cb044; color: #ffffa0; }
+html[data-style=minecraft] .btn.play { background: #4cae2c; border-color: #000; color: #fff; font-weight: 800; box-shadow: inset 3px 3px #86e060, inset -3px -3px #25681a; }
+html[data-style=minecraft] .btn.play:hover { background: #5cc03a; filter: none; color: #ffffa0; }
+html[data-style=minecraft] .btn.stop, html[data-style=minecraft] .btn.danger, html[data-style=minecraft] .tag.clear { background: #a83232; color: #fff; border-color: #000; box-shadow: inset 2px 2px #e06a6a, inset -2px -2px #5a1515; }
+html[data-style=minecraft] .btn.ghost { background: transparent; border-color: transparent; box-shadow: none; color: #c6c6c6; }
+html[data-style=minecraft] .seg { background: transparent; border: 0; padding: 0; gap: 4px; }
+/* панели: камень */
+html[data-style=minecraft] .panel, html[data-style=minecraft] .hit, html[data-style=minecraft] .modal, html[data-style=minecraft] .toast { background: #3a3a3a; border: 4px solid #000; box-shadow: inset 2px 2px #5a5a5a, inset -2px -2px #222; }
+html[data-style=minecraft] .card { background: #3a3a3a; border: 4px solid #000; box-shadow: inset 2px 2px #5a5a5a, inset -2px -2px #222; }
+html[data-style=minecraft] .card:hover { border-color: #fff; }
+html[data-style=minecraft] .card-art { background: #1d1d1d; border-bottom: 4px solid #000; }
+html[data-style=minecraft] .card.new-card { background: transparent; border: 4px dashed #8b8b8b; box-shadow: none; }
+/* главная карточка: блок земли с травой */
+html[data-style=minecraft] .hero { border: 4px solid #000; background: linear-gradient(180deg, #5d9b3a 0 18px, #3e7a24 18px 24px, transparent 24px), repeating-linear-gradient(90deg, #6b4a2b 0 16px, #5e4025 16px 32px); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .12); padding-top: 36px; }
+html[data-style=minecraft] .hero::before { display: none; }
+html[data-style=minecraft] .hero .over { color: #e6d3b0; }
+html[data-style=minecraft] .hero .chip { background: #2a1d10; color: #fff; border: 2px solid #000; }
+html[data-style=minecraft] input[type=text], html[data-style=minecraft] input[type=password], html[data-style=minecraft] input[type=number], html[data-style=minecraft] input[type=search], html[data-style=minecraft] select, html[data-style=minecraft] textarea { background-color: #000; color: #fff; border: 2px solid #a0a0a0; box-shadow: none; }
+html[data-style=minecraft] input:focus, html[data-style=minecraft] select:focus, html[data-style=minecraft] textarea:focus { border-color: #fff; box-shadow: none; }
+html[data-style=minecraft] .chip { background: #2a2a2a; border: 2px solid #000; color: #e6e6e6; font-weight: 700; }
+html[data-style=minecraft] .tabs { border-bottom: 4px solid #000; }
+html[data-style=minecraft] .tab { color: #c6c6c6; font-weight: 700; }
+html[data-style=minecraft] .tab.on { color: #fff; background: #5a5a5a; }
+html[data-style=minecraft] .tab.on::after { border-radius: 0; height: 4px; background: #5d9b3a; }
+html[data-style=minecraft] .vsel-menu { background: #3a3a3a; border: 4px solid #000; box-shadow: inset 2px 2px #5a5a5a, inset -2px -2px #222; }
+html[data-style=minecraft] .vsel-menu button { color: #fff; font-weight: 700; background: transparent; }
+html[data-style=minecraft] .vsel-menu button:hover, html[data-style=minecraft] .vsel-menu button.on, html[data-style=minecraft] .vsel-menu button.on:hover { background: #5d9b3a; color: #ffffa0; }
+html[data-style=minecraft] .gprog i { background: repeating-linear-gradient(90deg, #7ed957 0 8px, #4cae2c 8px 10px); }
+html[data-style=minecraft] .gprog { height: 8px; background: #000; }
+html[data-style=minecraft] .preset { background: #3a3a3a; border: 3px solid #000; }
+html[data-style=minecraft] .preset.on { border-color: #7ed957; }
+html[data-style=minecraft] .backdrop { background: rgba(0, 0, 0, .75); }
+html[data-style=minecraft] .statuspill { background: #3a3a3a; border: 3px solid #000; }
+html[data-style=minecraft] .page-head h1 { letter-spacing: 0; font-weight: 800; }
+html[data-style=minecraft] .soon-tag { background: #ffaa00; color: #000; text-shadow: none; border: 1px solid #000; }
+
+/* ---------- Aero (стекло) ---------- */
+html[data-style=aero] {
+  color-scheme: light;
+  --bg: #7ab6e8; --rail: rgba(255, 255, 255, .22); --s1: rgba(255, 255, 255, .5); --s2: rgba(255, 255, 255, .62); --s3: rgba(255, 255, 255, .8);
+  --line: rgba(255, 255, 255, .85); --line-soft: rgba(255, 255, 255, .6); --line-hi: #ffffff;
+  --text: #0b2540; --muted: #31526f; --faint: #5a7a96;
+  --accent: #1e7fe8; --accent-2: #0b5fc4; --accent-bg: rgba(30, 127, 232, .16); --accent-ink: #ffffff;
+  --play: #4ccf4a; --play-2: #1f9a2a; --play-ink: #ffffff;
+  --ok: #1d8f35; --danger: #c62828; --warn: #b36b00;
+  --font: "Segoe UI", "Segoe UI Variable Text", system-ui, sans-serif;
+}
+html[data-style=aero] body { background: radial-gradient(ellipse 60% 40% at 20% 10%, rgba(255, 255, 255, .75), transparent 70%), radial-gradient(ellipse 50% 35% at 85% 20%, rgba(255, 255, 255, .5), transparent 70%), linear-gradient(180deg, #2f86d6 0%, #7ec2f2 45%, #bfe6ff 75%, #9fd36a 100%) fixed; }
+html[data-style=aero] .rail { background: linear-gradient(180deg, rgba(255, 255, 255, .45), rgba(255, 255, 255, .15)); backdrop-filter: blur(14px) saturate(1.4); border-right: 1px solid rgba(255, 255, 255, .8); box-shadow: 2px 0 14px rgba(0, 60, 140, .25); }
+html[data-style=aero] .rail-btn { color: #0b2540; border-radius: 8px; text-shadow: 0 0 8px #fff; }
+html[data-style=aero] .rail-btn:hover { background: rgba(255, 255, 255, .45); }
+html[data-style=aero] .rail-btn.on { background: linear-gradient(180deg, rgba(255, 255, 255, .85), rgba(190, 225, 255, .6)); box-shadow: inset 0 0 0 1px #fff, 0 2px 8px rgba(0, 70, 160, .3); color: #0b3d80; }
+html[data-style=aero] .rail-btn.on::before { display: none; }
+html[data-style=aero] .rail-btn.support { color: #c2185b; }
+html[data-style=aero] .page-head h1 { color: #fff; text-shadow: 0 0 14px rgba(0, 50, 120, .75), 0 1px 2px rgba(0, 40, 100, .8); }
+html[data-style=aero] .page-head .sub { color: #eaf5ff; text-shadow: 0 1px 3px rgba(0, 40, 100, .8); }
+html[data-style=aero] .panel, html[data-style=aero] .hit, html[data-style=aero] .card, html[data-style=aero] .modal, html[data-style=aero] .toast { background: linear-gradient(180deg, rgba(255, 255, 255, .62), rgba(255, 255, 255, .38)); backdrop-filter: blur(16px) saturate(1.5); border: 1px solid rgba(255, 255, 255, .9); border-radius: 10px; box-shadow: 0 6px 22px rgba(0, 50, 120, .28), inset 0 1px 0 #fff; }
+html[data-style=aero] .modal { background: linear-gradient(180deg, rgba(255, 255, 255, .85), rgba(235, 246, 255, .8)); }
+html[data-style=aero] .card:hover, html[data-style=aero] .hit:hover { box-shadow: 0 8px 26px rgba(0, 80, 200, .45), inset 0 1px 0 #fff, 0 0 0 2px rgba(255, 255, 255, .9); }
+html[data-style=aero] .card-art { border-bottom: 1px solid rgba(255, 255, 255, .8); }
+html[data-style=aero] .card.new-card { background: rgba(255, 255, 255, .25); border: 2px dashed rgba(255, 255, 255, .95); box-shadow: none; color: #fff; text-shadow: 0 1px 3px rgba(0, 40, 100, .7); }
+html[data-style=aero] .hero { background: linear-gradient(180deg, rgba(255, 255, 255, .45), rgba(255, 255, 255, .15)), linear-gradient(120deg, #1e6fd0, #55b4ff 70%); backdrop-filter: blur(10px); border: 1px solid #fff; border-radius: 12px; box-shadow: 0 8px 26px rgba(0, 50, 130, .35), inset 0 1px 0 rgba(255, 255, 255, .9); }
+html[data-style=aero] .hero::before { background: linear-gradient(180deg, rgba(255, 255, 255, .5), transparent 50%); opacity: .6; }
+html[data-style=aero] .hero h2, html[data-style=aero] .hero .over { color: #fff; text-shadow: 0 1px 3px rgba(0, 40, 100, .8); }
+html[data-style=aero] .hero .chip { background: rgba(255, 255, 255, .35); color: #08305c; border-color: rgba(255, 255, 255, .8); }
+/* глянцевые кнопки */
+html[data-style=aero] .btn, html[data-style=aero] .vsel-btn, html[data-style=aero] .pg, html[data-style=aero] .seg button { border-radius: 6px; border: 1px solid #6f8fb3; color: #0b2540; font-weight: 600; background: linear-gradient(180deg, #fdfefe 0%, #e8f1fb 48%, #cfe0f3 52%, #e6f1fc 100%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .9), 0 1px 3px rgba(0, 40, 100, .3); }
+html[data-style=aero] .btn:hover, html[data-style=aero] .vsel-btn:hover, html[data-style=aero] button.pg:hover:not(:disabled) { background: linear-gradient(180deg, #fffdf2 0%, #ffecb0 48%, #ffd35c 52%, #ffe9a0 100%); border-color: #c58a00; color: #0b2540; }
+html[data-style=aero] .btn.primary, html[data-style=aero] .pg.on, html[data-style=aero] .seg button.on { color: #fff; text-shadow: 0 1px 1px rgba(0, 40, 100, .6); border-color: #0b4f9c; background: linear-gradient(180deg, #7cc0ff 0%, #2f8cf0 48%, #1366d4 52%, #3b9bff 100%); }
+html[data-style=aero] .btn.primary:hover { background: linear-gradient(180deg, #9ad0ff 0%, #4c9ff5 48%, #1f74e0 52%, #55a9ff 100%); border-color: #0b4f9c; color: #fff; }
+html[data-style=aero] .btn.play { color: #fff; font-weight: 700; text-shadow: 0 1px 2px rgba(0, 60, 0, .7); border-color: #17701f; background: linear-gradient(180deg, #a6f08f 0%, #4fd04a 48%, #25a02c 52%, #5fd85a 100%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .6), 0 4px 14px rgba(20, 120, 30, .5); }
+html[data-style=aero] .btn.play:hover { filter: brightness(1.07); background: linear-gradient(180deg, #a6f08f 0%, #4fd04a 48%, #25a02c 52%, #5fd85a 100%); border-color: #17701f; color: #fff; }
+html[data-style=aero] .btn.stop, html[data-style=aero] .btn.danger { color: #b71c1c; }
+html[data-style=aero] .btn.ghost { background: transparent; box-shadow: none; border-color: transparent; color: #0b4f9c; }
+html[data-style=aero] .btn.ghost:hover { background: rgba(255, 255, 255, .5); border-color: transparent; }
+html[data-style=aero] .seg { background: rgba(255, 255, 255, .35); border: 1px solid rgba(255, 255, 255, .85); border-radius: 8px; backdrop-filter: blur(8px); }
+html[data-style=aero] .seg button { border-color: transparent; background: transparent; box-shadow: none; }
+html[data-style=aero] .seg button.on { border-color: #0b4f9c; }
+html[data-style=aero] .tag { background: rgba(255, 255, 255, .55); border: 1px solid #fff; color: #0b2540; }
+html[data-style=aero] .tag.on { background: linear-gradient(180deg, #7cc0ff, #2f8cf0); color: #fff; border-color: #0b4f9c; }
+html[data-style=aero] .tag.clear { background: linear-gradient(180deg, #ff8a80, #d32f2f); border-color: #8e1b1b; color: #fff; box-shadow: none; }
+html[data-style=aero] input[type=text], html[data-style=aero] input[type=password], html[data-style=aero] input[type=number], html[data-style=aero] input[type=search], html[data-style=aero] select, html[data-style=aero] textarea { background-color: rgba(255, 255, 255, .85); border: 1px solid #7a9bc0; border-radius: 6px; color: #0b2540; box-shadow: inset 0 1px 3px rgba(0, 40, 100, .25); }
+html[data-style=aero] input:focus, html[data-style=aero] select:focus, html[data-style=aero] textarea:focus { border-color: #1e7fe8; box-shadow: inset 0 1px 3px rgba(0, 40, 100, .25), 0 0 0 3px rgba(30, 127, 232, .3); }
+html[data-style=aero] .chip { background: rgba(255, 255, 255, .6); border: 1px solid #fff; color: #24415e; }
+html[data-style=aero] .tabs { border-bottom: 1px solid rgba(255, 255, 255, .85); }
+html[data-style=aero] .tab { color: #fff; text-shadow: 0 1px 3px rgba(0, 40, 100, .8); }
+html[data-style=aero] .tab.on::after { background: #fff; box-shadow: 0 0 8px #fff; }
+html[data-style=aero] .vsel-menu { background: rgba(255, 255, 255, .92); backdrop-filter: blur(12px); border: 1px solid #fff; border-radius: 8px; box-shadow: 0 10px 28px rgba(0, 50, 120, .4); }
+html[data-style=aero] .vsel-menu button { color: #0b2540; }
+html[data-style=aero] .vsel-menu button:hover { background: rgba(30, 127, 232, .15); }
+html[data-style=aero] .vsel-menu button.on, html[data-style=aero] .vsel-menu button.on:hover { background: linear-gradient(180deg, #7cc0ff, #2f8cf0); color: #fff; }
+html[data-style=aero] .gprog i { background: linear-gradient(90deg, #7cc0ff, #4ccf4a); box-shadow: 0 0 10px #fff; }
+html[data-style=aero] .preset { background: rgba(255, 255, 255, .55); border: 2px solid #fff; border-radius: 8px; }
+html[data-style=aero] .preset.on { border-color: #1e7fe8; }
+html[data-style=aero] .backdrop { background: rgba(10, 50, 110, .45); backdrop-filter: blur(4px); }
+html[data-style=aero] .statuspill { background: rgba(255, 255, 255, .85); border: 1px solid #fff; color: #0b2540; }
+html[data-style=aero] .empty h3, html[data-style=aero] .empty { color: #fff; text-shadow: 0 1px 3px rgba(0, 40, 100, .8); }
+html[data-style=aero] .soon-tag { background: #ffe9a8; color: #5a3a00; }
+html[data-style=aero] .page-head .sub { color: #0b2540; text-shadow: 0 0 8px #fff, 0 0 3px #fff; font-weight: 600; }
+
+/* styles-end */

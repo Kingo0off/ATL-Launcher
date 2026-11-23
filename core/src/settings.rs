@@ -71,6 +71,13 @@ pub fn clean_theme(v: &Value) -> Result<Value, String> {
                 }
                 out.insert(k.clone(), json!(t));
             }
+            "style" => {
+                let t = val.as_str().ok_or("Стиль должен быть строкой")?;
+                if !matches!(t, "" | "xp" | "win98" | "terminal" | "minecraft" | "aero") {
+                    return Err("Неизвестный стиль".into());
+                }
+                out.insert(k.clone(), json!(t));
+            }
             "preset" => {
                 let t = val.as_str().ok_or("Название темы должно быть строкой")?;
                 if t.len() > 32 || !t.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
