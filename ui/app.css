@@ -445,9 +445,9 @@ canvas.bad { opacity: .2; }
 .vsel-btn b { color: var(--text); }
 .vsel-btn:hover, .vsel-btn[aria-expanded=true] { border-color: var(--accent); }
 .vsel-menu { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 100%; padding: 6px; border-radius: 12px; border: 1px solid var(--line); background: var(--s1); box-shadow: 0 12px 30px rgba(0, 0, 0, .5); display: flex; flex-direction: column; gap: 2px; }
-.vsel-menu button { text-align: left; padding: 9px 14px; border-radius: 8px; font-weight: 700; color: var(--muted); }
+.vsel-menu button { background: transparent; border: 0; font: inherit; text-align: left; padding: 9px 14px; border-radius: 8px; font-weight: 700; color: var(--muted); }
 .vsel-menu button:hover { background: var(--s3); color: var(--text); }
-.vsel-menu button.on { background: rgba(95, 211, 154, .16); color: var(--ok); }
+.vsel-menu button.on, .vsel-menu button.on:hover { background: rgba(95, 211, 154, .16); color: var(--ok); }
 
 /* страница мода */
 .hit-icon.link, .plink { cursor: pointer; }
