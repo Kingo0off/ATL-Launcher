@@ -43,12 +43,18 @@ fn news_drops_drafts_and_service_lines() {
         {"tag_name": "v3.1.42", "body": null}
     ]);
     let n = parse_news(&js);
-    assert_eq!(n.len(), 2);
+    // черновик и релиз без описания в новости не попадают
+    assert_eq!(n.len(), 1);
     assert_eq!(n[0]["version"], "3.1.44");
     assert_eq!(n[0]["date"], "2026-11-24");
     let body = n[0]["body"].as_str().unwrap();
     assert!(body.contains("Добавлены звуки"));
     assert!(!body.contains("Co-Authored") && !body.contains("Claude-Session"));
-    assert_eq!(n[1]["version"], "3.1.42");
-    assert_eq!(n[1]["body"], "");
+}
+
+#[test]
+fn update_notes_have_no_service_lines() {
+    use friendlauncher_core::selfupdate::clean_body;
+    let t = clean_body("Звуки\n\n- пункт\n\nCo-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/x\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n");
+    assert_eq!(t, "Звуки\n\n- пункт");
 }

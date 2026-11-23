@@ -43,6 +43,11 @@ jobs:
         with:
           name: Voxel-rust-exe
           path: Voxel.exe
+      - name: Описание релиза (из сообщения коммита, без служебных строк)
+        if: github.event_name == 'push'
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: printf '%s\n' "$COMMIT_MSG" | grep -v -i -E '^(Co-Authored-By|Claude-Session):|Generated with \[Claude Code\]' > release_body.md || true
       - name: Релиз (из него лаунчер сам берёт обновления)
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
@@ -51,7 +56,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Voxel ${{ env.FL_VERSION }}
           make_latest: "true"
-          body: ${{ github.event.head_commit.message }}
+          body_path: release_body.md
           files: Voxel.exe
       - name: Журнал в ветку ci-logs (чтобы разработчик мог его прочитать)
         if: always()

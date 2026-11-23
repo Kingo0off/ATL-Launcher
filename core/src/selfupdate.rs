@@ -53,7 +53,7 @@ pub fn parse_release(js: &Value) -> Option<Info> {
         url: asset.get("browser_download_url")?.as_str()?.to_string(),
         size: asset.get("size").and_then(|s| s.as_u64()).unwrap_or(0),
         sha256: sha,
-        notes: js.get("body").and_then(|b| b.as_str()).unwrap_or("").chars().take(1500).collect(),
+        notes: clean_body(js.get("body").and_then(|b| b.as_str()).unwrap_or("")).chars().take(1500).collect(),
     })
 }
 
@@ -138,6 +138,19 @@ pub fn apply(_new: &Path) -> Result<(), String> {
     Err("Самообновление работает только в Windows.".into())
 }
 
+/// Убирает из описания релиза служебные строки коммита (соавторство, ссылка на сессию).
+pub fn clean_body(body: &str) -> String {
+    body.lines()
+        .filter(|l| {
+            let t = l.trim_start().to_lowercase();
+            !(t.starts_with("co-authored-by:") || t.starts_with("claude-session:") || t.contains("generated with [claude code]"))
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string()
+}
+
 /// Превращает список релизов GitHub в записи для вкладки «Новости».
 /// Служебные строки коммита (Co-Authored-By, Claude-Session) вырезаются.
 pub fn parse_news(js: &Value) -> Vec<Value> {
@@ -147,21 +160,15 @@ pub fn parse_news(js: &Value) -> Vec<Value> {
                 .filter(|r| !r["draft"].as_bool().unwrap_or(false))
                 .filter_map(|r| {
                     let tag = r["tag_name"].as_str()?;
-                    let body: String = r["body"]
-                        .as_str()
-                        .unwrap_or("")
-                        .lines()
-                        .filter(|l| {
-                            let t = l.trim_start().to_lowercase();
-                            !(t.starts_with("co-authored-by:") || t.starts_with("claude-session:"))
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n");
+                    let body = clean_body(r["body"].as_str().unwrap_or(""));
+                    if body.is_empty() {
+                        return None; // релизы без описания в новостях не нужны
+                    }
                     Some(json!({
                         "version": tag.trim_start_matches('v'),
                         "title": r["name"].as_str().unwrap_or(tag),
                         "date": r["published_at"].as_str().unwrap_or("").chars().take(10).collect::<String>(),
-                        "body": body.trim().chars().take(8000).collect::<String>(),
+                        "body": body.chars().take(8000).collect::<String>(),
                         "url": r["html_url"].as_str().unwrap_or(""),
                         "prerelease": r["prerelease"].as_bool().unwrap_or(false)
                     }))
