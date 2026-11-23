@@ -631,12 +631,20 @@ function drawLimit(open) {
     + (open ? `<div class="vsel-menu" role="listbox">${LIMITS.map(n => `<button type="button" role="option" class="${n === B.limit ? 'on' : ''}" data-act="lim-set" data-n="${n}">${n}</button>`).join('')}</div>` : '');
 }
 function drawTags() {
-  const B = S.br, box = $('#br-tags');
+  const B = S.br, box = $('#br-tags'), btn = $('#br-tagbtn');
   if (!B || !box) return;
   const list = B.src === 'modrinth' ? BR_TAGS[B.type] || [] : [];
-  box.hidden = !list.length;
-  box.innerHTML = list.map(([k, t]) => `<button type="button" class="tag ${B.tags.has(k) ? 'on' : ''}" data-act="br-tag" data-t="${k}" aria-pressed="${B.tags.has(k)}">${t}</button>`).join('')
-    + (B.tags.size ? `<button type="button" class="tag clear" data-act="br-tags-clear">${ic('x', 13)} Сбросить (${B.tags.size})</button>` : '');
+  if (btn) {
+    btn.hidden = !list.length;
+    btn.setAttribute('aria-expanded', !!B.tagsOpen);
+    btn.innerHTML = `Теги${B.tags.size ? ` <b class="cnt">${B.tags.size}</b>` : ''}<svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="${B.tagsOpen ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6'}"/></svg>`;
+  }
+  const clear = B.tags.size ? `<button type="button" class="tag clear" data-act="br-tags-clear">${ic('x', 13)} Сбросить (${B.tags.size})</button>` : '';
+  box.classList.toggle('panel-open', !!(list.length && B.tagsOpen));
+  if (!list.length || (!B.tagsOpen && !B.tags.size)) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  if (B.tagsOpen) box.innerHTML = list.map(([k, t]) => `<button type="button" class="tag ${B.tags.has(k) ? 'on' : ''}" data-act="br-tag" data-t="${k}" aria-pressed="${B.tags.has(k)}">${t}</button>`).join('') + clear;
+  else box.innerHTML = list.filter(([k]) => B.tags.has(k)).map(([k, t]) => `<button type="button" class="tag on" data-act="br-tag" data-t="${k}" title="Убрать тег">${t} ${ic('x', 11)}</button>`).join('') + clear;
 }
 /* md-begin */
 /* Описание мода приходит в Markdown. Весь текст сначала экранируется, потом разрешаются только свои теги,
@@ -818,7 +826,7 @@ function browseInto(el, it) {
     <div class="filters"><div class="seg" id="br-types">${types.map(([k, t]) => `<button data-act="br-type" data-t="${k}" class="${k === 'mod' ? 'on' : ''}">${t}</button>`).join('')}</div><span style="flex:1"></span>
       ${it ? `<span class="chip">для ${esc(it.mc_version)}</span>${loaderChip(it)}`
       : `<select id="br-mc" aria-label="Версия Minecraft"><option value="">Любая версия</option></select><select id="br-ld" aria-label="Загрузчик"><option value="">Любой загрузчик</option>${['fabric', 'quilt', 'forge', 'neoforge'].map(k => `<option value="${k}">${LOADER_NAMES[k]}</option>`).join('')}</select>`}
-      <div class="vsel" id="br-lim"></div>
+      <button type="button" class="vsel-btn" id="br-tagbtn" data-act="br-tags-toggle" hidden></button><div class="vsel" id="br-lim"></div>
       <select id="br-sort" aria-label="Сортировка">${[['relevance', 'По релевантности'], ['downloads', 'По загрузкам'], ['newest', 'Новые'], ['updated', 'Обновлённые']].map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></div>
     <div class="tags" id="br-tags"></div>
     ${vanilla ? '<div class="note warn">У сборки не выбран загрузчик, поэтому моды установить нельзя. Выбери Fabric, Quilt, Forge или NeoForge на вкладке «Настройки». Ресурспаки и шейдеры ставятся и так.</div>' : ''}
@@ -1468,6 +1476,7 @@ const A = {
   'br-tag': el => { const B = S.br, t = el.dataset.t; B.tags.has(t) ? B.tags.delete(t) : B.tags.add(t); drawTags(); brSearch(true); },
   'lim-toggle': () => drawLimit(!$('#br-lim .vsel-menu')),
   'lim-set': el => { const B = S.br, n = +el.dataset.n; drawLimit(false); if (!B || !LIMITS.includes(n) || n === B.limit) return; B.limit = n; lsSet('br-limit', n); drawLimit(); brSearch(true); },
+  'br-tags-toggle': () => { const B = S.br; B.tagsOpen = !B.tagsOpen; drawTags(); },
   'br-tags-clear': () => { S.br.tags.clear(); drawTags(); brSearch(true); },
   'br-src': el => { const B = S.br; if (B.src === el.dataset.s) return; B.src = el.dataset.s; B.tags.clear(); drawTags(); $$('#br-src button').forEach(b => b.classList.toggle('on', b === el)); $('#br-q').placeholder = 'Искать на ' + (B.src === 'curseforge' ? 'CurseForge' : 'Modrinth'); brSearch(true); },
   /* скриншоты и скины */
