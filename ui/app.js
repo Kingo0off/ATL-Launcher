@@ -809,7 +809,7 @@ function tabAdd(it, el) { browseInto(el, it); }
 function browseInto(el, it) {
   const B = S.br = {
     ctx: it ? it.key : null, it, src: 'modrinth', type: 'mod', q: '', sort: 'relevance', mc: it ? it.mc_version : '', loader: it ? (it.loader?.type || '') : '',
-    hits: [], total: 0, loading: false, err: '', installed: new Set(), busy: new Set(), seq: 0, tags: new Set(), limit: LIMITS.includes(+lsGet('br-limit')) ? +lsGet('br-limit') : 20,
+    hits: [], total: 0, loading: false, err: '', installed: new Set(), busy: new Set(), seq: 0, page: 0, tags: new Set(), limit: LIMITS.includes(+lsGet('br-limit')) ? +lsGet('br-limit') : 20,
   };
   const types = [['mod', 'Моды'], ['resourcepack', 'Ресурспаки'], ['shader', 'Шейдеры']].concat(it ? [] : [['modpack', 'Сборки']]);
   const vanilla = it && (it.loader?.type || 'vanilla') === 'vanilla';
@@ -822,7 +822,7 @@ function browseInto(el, it) {
       <select id="br-sort" aria-label="Сортировка">${[['relevance', 'По релевантности'], ['downloads', 'По загрузкам'], ['newest', 'Новые'], ['updated', 'Обновлённые']].map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></div>
     <div class="tags" id="br-tags"></div>
     ${vanilla ? '<div class="note warn">У сборки не выбран загрузчик, поэтому моды установить нельзя. Выбери Fabric, Quilt, Forge или NeoForge на вкладке «Настройки». Ресурспаки и шейдеры ставятся и так.</div>' : ''}
-    <div class="results" id="br-results"></div><div style="text-align:center;margin:18px 0"><button class="btn" id="br-more" data-act="br-more" hidden>Показать ещё</button></div></div><div id="br-detail" hidden></div>`;
+    <div class="pager" id="br-pg-top"></div><div class="results" id="br-results"></div><div class="pager" id="br-pg-bot"></div></div><div id="br-detail" hidden></div>`;
   if (it) api('content.installed', { key: it.key }).then(d => { B.installed = new Set(d.project_ids); drawHits(); }).catch(() => { });
   else api('meta.mc_versions', { snapshots: false }).then(d => { $('#br-mc').insertAdjacentHTML('beforeend', d.versions.slice(0, 60).map(v => `<option>${esc(v)}</option>`).join('')); }).catch(() => { });
   drawTags();
@@ -832,23 +832,41 @@ function browseInto(el, it) {
 async function brSearch(reset) {
   const B = S.br; if (!B) return;
   const my = ++B.seq;
-  if (reset) { B.hits = []; B.total = 0; }
+  if (reset) { B.page = 0; B.total = 0; }
+  B.hits = [];
   B.loading = true; B.err = ''; drawHits();
   try {
-    const d = await api(B.src + '.search', { query: B.q, type: B.type, mc: B.mc, loader: B.type === 'mod' || B.type === 'modpack' ? B.loader : '', sort: B.sort, offset: B.hits.length, limit: B.limit, tags: B.src === 'modrinth' ? [...B.tags] : [] });
+    const d = await api(B.src + '.search', { query: B.q, type: B.type, mc: B.mc, loader: B.type === 'mod' || B.type === 'modpack' ? B.loader : '', sort: B.sort, offset: B.page * brLimit(B), limit: brLimit(B), tags: B.src === 'modrinth' ? [...B.tags] : [] });
     if (my !== B.seq) return;
-    B.hits = B.hits.concat(d.hits); B.total = d.total;
+    B.hits = d.hits; B.total = d.total;
   } catch (e) { if (my !== B.seq) return; B.err = e.message; }
   B.loading = false; drawHits();
+}
+/* страницы: у CurseForge больше 50 за раз не бывает */
+const brLimit = B => B.src === 'curseforge' ? Math.min(B.limit, 50) : B.limit;
+function pageList(cur, n) {
+  const set = new Set([0, n - 1, cur - 1, cur, cur + 1]);
+  if (cur < 3) { set.add(1); set.add(2); set.add(3); }
+  if (cur > n - 4) { set.add(n - 2); set.add(n - 3); set.add(n - 4); }
+  const out = []; let prev = -1;
+  for (const i of [...set].filter(i => i >= 0 && i < n).sort((a, b) => a - b)) { if (i - prev > 1) out.push(null); out.push(i); prev = i; }
+  return out;
+}
+function drawPager() {
+  const B = S.br; if (!B) return;
+  const n = Math.ceil(B.total / brLimit(B)), cur = B.page;
+  const html = n < 2 ? '' : `<button type="button" class="pg arrow" data-act="br-page" data-n="${cur - 1}" ${cur === 0 ? 'disabled' : ''} aria-label="Предыдущая страница">${ic('back', 14)}</button>`
+    + pageList(cur, n).map(i => i === null ? '<span class="pg gap">…</span>' : `<button type="button" class="pg ${i === cur ? 'on' : ''}" data-act="br-page" data-n="${i}" ${i === cur ? 'aria-current="page"' : ''}>${i + 1}</button>`).join('')
+    + `<button type="button" class="pg arrow next" data-act="br-page" data-n="${cur + 1}" ${cur >= n - 1 ? 'disabled' : ''} aria-label="Следующая страница">${ic('back', 14)}</button>`;
+  for (const id of ['#br-pg-top', '#br-pg-bot']) { const b = $(id); if (b) b.innerHTML = html; }
 }
 function drawHits() {
   const B = S.br, box = $('#br-results');
   if (!B || !box) return;
-  const more = $('#br-more');
   if (B.err) {
     const key = /ключ API CurseForge/.test(B.err);
-    box.innerHTML = `<div class="empty"><h3>${key ? 'CurseForge пока недоступен' : 'Не получилось загрузить каталог'}</h3><p>${esc(B.err)}</p><div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">${key ? `<button class="btn primary" data-act="nav" data-to="settings">${ic('sliders')} Открыть настройки</button><button class="btn" data-act="open-url" data-url="https://console.curseforge.com/">${ic('link', 14)} Получить ключ</button>` : ''}<button class="btn" data-act="br-retry">${ic('refresh')} Повторить</button></div></div>`; more.hidden = true; return; }
-  if (!B.hits.length) { box.innerHTML = B.loading ? '<div class="empty"><span class="spin"></span><p style="margin-top:10px">Ищу…</p></div>' : '<div class="empty"><h3>Ничего не найдено</h3><p>Попробуй другой запрос или сбрось фильтры.</p></div>'; more.hidden = true; return; }
+    box.innerHTML = `<div class="empty"><h3>${key ? 'CurseForge пока недоступен' : 'Не получилось загрузить каталог'}</h3><p>${esc(B.err)}</p><div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">${key ? `<button class="btn primary" data-act="nav" data-to="settings">${ic('sliders')} Открыть настройки</button><button class="btn" data-act="open-url" data-url="https://console.curseforge.com/">${ic('link', 14)} Получить ключ</button>` : ''}<button class="btn" data-act="br-retry">${ic('refresh')} Повторить</button></div></div>`; drawPager(); return; }
+  if (!B.hits.length) { box.innerHTML = B.loading ? '<div class="empty"><span class="spin"></span><p style="margin-top:10px">Ищу…</p></div>' : '<div class="empty"><h3>Ничего не найдено</h3><p>Попробуй другой запрос или сбрось фильтры.</p></div>'; drawPager(); return; }
   box.innerHTML = B.hits.map(h => {
     const done = B.installed.has(h.project_id), busy = B.busy.has(h.project_id);
     const label = B.type === 'modpack' ? 'Создать сборку' : B.ctx ? 'Установить' : 'Установить…';
@@ -862,8 +880,7 @@ function drawHits() {
       <div class="hit-side">${btn}<span class="dl">${ic('download', 13)} ${esc(fmtNum(h.downloads))}</span></div></article>`;
   }).join('');
   if (B.detail) drawDetail();
-  more.hidden = B.hits.length >= B.total;
-  more.disabled = B.loading;
+  drawPager();
 }
 async function installTo(key, h, type) {
   const B = S.br;
@@ -1480,7 +1497,7 @@ const A = {
   'skin-reset': async () => { const acc = skinAcc(); if (acc && await confirmBox({ title: 'Сбросить скин?', text: 'Вернётся стандартный скин Minecraft. Твой текущий скин пропадёт, если не сохранить его в библиотеку.', ok: 'Сбросить', danger: true })) skinRun(() => api('skins.reset', { uuid: acc.uuid }), 'Скин сброшен'); },
   'cape-set': el => { const acc = skinAcc(); return skinRun(() => api('skins.cape', { uuid: acc.uuid, cape_id: el.dataset.id }), el.dataset.id ? 'Плащ надет' : 'Плащ снят'); },
   'skin-save-current': async () => { const acc = skinAcc(); await api('skins.import_current', { uuid: acc.uuid }); toast('Скин сохранён в библиотеку', 'ok'); await loadSkins(false); },
-  'br-more': () => brSearch(false),
+  'br-page': el => { const B = S.br, n = +el.dataset.n, max = Math.ceil(B.total / brLimit(B)); if (!(n >= 0 && n < max) || n === B.page) return; B.page = n; brSearch(false); $('#br-q')?.scrollIntoView?.({ block: 'start' }); },
   'br-open': el => { const h = S.br.hits.find(x => x.project_id === el.dataset.pid); if (h) openProject(h); },
   'br-back': () => { const D = S.br.detail; if (D && D.pushed && history.state && history.state.brDetail) history.back(); else { S.br.detail = null; drawDetail(); } },
   'br-tab': el => { const D = S.br.detail; if (!D) return; D.tab = el.dataset.t; drawDetail(); if (D.tab === 'versions') loadVersions(); },
