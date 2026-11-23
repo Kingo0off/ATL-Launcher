@@ -12,7 +12,7 @@ const INDEX_HTML: &str = include_str!("../../ui/index.html");
 const APP_JS: &str = include_str!("../../ui/app.js");
 const APP_CSS: &str = include_str!("../../ui/app.css");
 
-const CSP: &str = "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; \
+const CSP: &str = "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; \
                    script-src 'self'; connect-src 'self'; frame-ancestors 'none'";
 const MAX_JSON: usize = 1 << 20;
 

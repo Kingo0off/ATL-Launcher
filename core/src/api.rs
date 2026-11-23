@@ -645,6 +645,10 @@ impl Api {
                 }))
             }
             "ping" | "bye" => Ok(json!({"ok": true})),
+            "app.news" => {
+                let list = self.cached("news", || Ok(json!({"news": crate::selfupdate::news(&self.endpoints)?})))?;
+                Ok(list)
+            }
             "app.update_check" => {
                 let found = crate::selfupdate::check(&self.endpoints, APP_VERSION)?;
                 let out = match &found {

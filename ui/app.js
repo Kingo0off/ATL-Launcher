@@ -8,6 +8,48 @@ const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = se
 const enc = encodeURIComponent;
 const LOADER_NAMES = { vanilla: 'Vanilla', fabric: 'Fabric', quilt: 'Quilt', forge: 'Forge', neoforge: 'NeoForge' };
 
+/* Звуки интерфейса: синтезируются на лету (Web Audio), файлов не нужно.
+   Играют только в стандартном стиле и если не выключены в настройках. */
+let AC = null;
+const sfxOn = () => !document.documentElement.dataset.style && (S.theme || {}).sound !== 'off';
+function tone(t0, f1, f2, dur, type, vol) {
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f1, t0); if (f2 !== f1) o.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(AC.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const SFX = {
+  click: t => tone(t, 520, 380, 0.06, 'triangle', 0.08),
+  tick: t => tone(t, 940, 820, 0.035, 'sine', 0.05),
+  confirm: t => { tone(t, 660, 660, 0.07, 'sine', 0.07); tone(t + 0.07, 880, 880, 0.09, 'sine', 0.07); },
+  toggle: t => tone(t, 700, 480, 0.05, 'square', 0.035),
+  play: t => { tone(t, 300, 900, 0.22, 'sine', 0.09); tone(t + 0.03, 450, 1350, 0.2, 'triangle', 0.04); },
+  open: t => tone(t, 420, 620, 0.08, 'sine', 0.05),
+  ok: t => { [523, 659, 784].forEach((f, i) => tone(t + i * 0.07, f, f, 0.12, 'sine', 0.07)); },
+  error: t => { tone(t, 220, 150, 0.2, 'sawtooth', 0.05); },
+};
+function sfx(name) {
+  try {
+    if (!sfxOn() || !SFX[name]) return;
+    if (!AC) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return; AC = new C(); }
+    if (AC.state === 'suspended') AC.resume();
+    SFX[name](AC.currentTime + 0.005);
+  } catch { /* звук необязателен */ }
+}
+function sfxFor(el) {
+  if (el.disabled) return '';
+  if (el.matches('.btn.play, .card-play:not(.stop)') || el.dataset.act === 'play') return 'play';
+  if (el.matches('.sw input, input[type=checkbox]')) return 'toggle';
+  if (el.matches('.btn.primary')) return 'confirm';
+  if (el.matches('.rail-btn, .tab, .seg button, .pg, .tag, .preset, .vsel-btn, .vsel-menu button, .set-nav button, .card')) return 'tick';
+  return 'click';
+}
+document.addEventListener('click', e => {
+  const el = e.target.closest('button, a[data-act], [data-act], label.sw');
+  if (!el || el.dataset.act === 'sound-toggle') return;
+  const n = sfxFor(el); if (n) sfx(n);
+}, true);
+
 function setOffline(v) { $('#offline').hidden = !v; }
 
 async function request(url, opts) {
@@ -83,6 +125,7 @@ const IC = {
   share: '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v14"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
   shirt: '<path d="M20.4 5.6 16 3a4 4 0 0 1-8 0L3.6 5.6a1 1 0 0 0-.5 1.2l1 3.2a1 1 0 0 0 1 .7H7v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-9h1.9a1 1 0 0 0 1-.7l1-3.2a1 1 0 0 0-.5-1.2z"/>',
+  news: '<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M10 6h8v4h-8V6Z"/>',
   link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
 };
 const ic = (n, s = 18) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
@@ -176,6 +219,7 @@ async function refresh() {
 function toast(text, kind = 'info') {
   const el = document.createElement('div');
   el.className = 'toast ' + kind;
+  if (kind === 'ok') sfx('ok'); else if (kind === 'error') sfx('error');
   el.innerHTML = `<span>${esc(text)}</span><button aria-label="Закрыть">${ic('x', 15)}</button>`;
   const box = $('#toasts');
   box.append(el);
@@ -187,6 +231,7 @@ function toast(text, kind = 'info') {
 
 function modal({ title, body, foot = '', wide = false, onMount }) {
   closeModal();
+  sfx('open');
   const root = $('#modal-root');
   root.innerHTML = `<div class="backdrop" data-act="modal-bg"><div class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
     <div class="modal-head"><h2>${esc(title)}</h2><button class="btn ghost sq" data-act="modal-close" aria-label="Закрыть">${ic('x')}</button></div>
@@ -280,13 +325,14 @@ function playBtn(it, size = '') {
 function renderRail(r) {
   const acc = curAccount();
   const running = S.st.instances.some(i => i.phase === 'running' || i.phase === 'preparing');
-  const item = (name, icon, label, on) => `<button class="rail-btn ${on ? 'on' : ''}" data-act="nav" data-to="${name}" title="${label}">${ic(icon, 22)}<span>${label}</span>${name === 'library' && running ? '<i class="dot run" title="Игра запущена"></i>' : name === 'settings' && S.upd && S.upd.available ? '<i class="dot" title="Есть обновление"></i>' : ''}</button>`;
+  const item = (name, icon, label, on) => `<button class="rail-btn ${on ? 'on' : ''}" data-act="nav" data-to="${name}" title="${label}">${ic(icon, 22)}<span>${label}</span>${name === 'library' && running ? '<i class="dot run" title="Игра запущена"></i>' : name === 'news' && newsUnread() ? '<i class="dot" title="Есть новости"></i>' : name === 'settings' && S.upd && S.upd.available ? '<i class="dot" title="Есть обновление"></i>' : ''}</button>`;
   $('#rail').innerHTML = `${LOGO}
     ${item('library', 'grid', 'Библиотека', r.name === 'library' || r.name === 'i')}
     ${item('discover', 'compass', 'Обзор', r.name === 'discover')}
     ${item('shots', 'image', 'Снимки', r.name === 'shots')}
     ${item('skins', 'shirt', 'Скины', r.name === 'skins').replace('</button>', '<i class="soon-tag">скоро</i></button>')}
     ${item('network', 'globe', 'Сеть', r.name === 'network')}
+    ${item('news', 'news', 'Новости', r.name === 'news')}
     ${item('settings', 'sliders', 'Настройки', r.name === 'settings')}
     <div class="grow"></div>
     <button class="rail-btn support" data-act="open-url" data-url="https://boosty.to/kingo0offf" title="Поддержать проект на Boosty">${ic('heart', 22)}<span>Поддержать</span></button>
@@ -623,8 +669,6 @@ const BR_TAGS = {
   modpack: [['adventure', 'Приключения'], ['challenging', 'Сложные'], ['combat', 'Бой'], ['kitchen-sink', 'Всё и сразу'], ['lightweight', 'Лёгкие'], ['magic', 'Магия'], ['multiplayer', 'Мультиплеер'], ['optimization', 'Оптимизация'], ['quests', 'Квесты'], ['technology', 'Технологии']],
 };
 const LIMITS = [5, 10, 15, 20, 50, 100];
-const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
-const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
 function drawLimit(open) {
   const B = S.br, box = $('#br-lim'); if (!B || !box) return;
   box.innerHTML = `<button type="button" class="vsel-btn" data-act="lim-toggle" aria-haspopup="listbox" aria-expanded="${!!open}">Вид: <b>${B.limit}</b><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>`
@@ -817,7 +861,7 @@ function tabAdd(it, el) { browseInto(el, it); }
 function browseInto(el, it) {
   const B = S.br = {
     ctx: it ? it.key : null, it, src: 'modrinth', type: 'mod', q: '', sort: 'relevance', mc: it ? it.mc_version : '', loader: it ? (it.loader?.type || '') : '',
-    hits: [], total: 0, loading: false, err: '', installed: new Set(), busy: new Set(), seq: 0, page: 0, tags: new Set(), limit: LIMITS.includes(+lsGet('br-limit')) ? +lsGet('br-limit') : 20,
+    hits: [], total: 0, loading: false, err: '', installed: new Set(), busy: new Set(), seq: 0, page: 0, tags: new Set(), limit: LIMITS.includes(+(S.theme || {}).br_limit) ? +S.theme.br_limit : 20,
   };
   const types = [['mod', 'Моды'], ['resourcepack', 'Ресурспаки'], ['shader', 'Шейдеры']].concat(it ? [] : [['modpack', 'Сборки']]);
   const vanilla = it && (it.loader?.type || 'vanilla') === 'vanilla';
@@ -1072,6 +1116,37 @@ async function skinRun(fn, okText) {
   K.busy = false; drawSkins();
 }
 
+/* ====================== новости (журнал изменений из релизов GitHub) ====================== */
+const newsTop = () => S.news && S.news.list && S.news.list[0] ? S.news.list[0].version : '';
+const newsUnread = () => { const v = newsTop(); return !!v && v !== (S.theme || {}).news_seen; };
+function markNewsSeen() {
+  const v = newsTop();
+  if (v && v !== (S.theme || {}).news_seen) { setTheme({ ...(S.theme || {}), news_seen: v }); renderRail(route()); }
+}
+async function loadNews(force) {
+  const N = S.news = S.news || { list: null, err: '', loading: false };
+  if (N.loading || (N.list && !force)) { if (route().name === 'news') { drawNews(); markNewsSeen(); } return; }
+  N.loading = true; N.err = '';
+  if (route().name === 'news') drawNews();
+  try { N.list = (await api('app.news')).news || []; } catch (e) { N.err = e.message; }
+  N.loading = false;
+  if (route().name === 'news') { drawNews(); markNewsSeen(); } else renderRail(route());
+}
+function newsDate(d) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); if (!m) return ''; return `${+m[3]} ${['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'][+m[2] - 1]} ${m[1]}`; }
+function newsHTML() { return `<div class="page"><div class="page-head"><div><h1>Новости</h1><p class="sub">Что нового в Voxel: изменения в каждой версии</p></div><div class="head-actions"><button class="btn" data-act="news-reload">${ic('refresh', 15)} Обновить</button></div></div><div id="news-list"></div></div>`; }
+function drawNews() {
+  const box = $('#news-list'), N = S.news; if (!box || !N) return;
+  if (N.loading && !N.list) { box.innerHTML = '<div class="empty"><span class="spin"></span><p style="margin-top:12px">Загружаю новости…</p></div>'; return; }
+  if (N.err && !N.list) { box.innerHTML = `<div class="empty"><h3>Не удалось загрузить новости</h3><p>${esc(N.err)}</p></div>`; return; }
+  if (!N.list || !N.list.length) { box.innerHTML = '<div class="empty"><h3>Пока ничего нет</h3><p>Здесь будут появляться описания обновлений.</p></div>'; return; }
+  const cur = S.st.version;
+  box.innerHTML = N.list.map((n, i) => {
+    const tag = n.version === cur ? '<span class="news-tag cur">У тебя эта версия</span>' : i === 0 && newerVer(n.version, cur) ? '<span class="news-tag new">Новая</span>' : '';
+    return `<article class="panel news-item"><h2 class="sec">Voxel ${esc(n.version)} ${tag}</h2>${n.date ? `<p class="news-date">${esc(newsDate(n.date))}</p>` : ''}<div class="md">${mdHtml(n.body) || '<p class="hint">Описания нет.</p>'}</div>${n.url ? `<p style="margin-top:12px"><button class="btn ghost sm" data-act="open-link" data-url="${esc(n.url)}">${ic('link', 13)} Открыть на GitHub</button></p>` : ''}</article>`;
+  }).join('');
+}
+const newerVer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
+
 /* ====================== настройки приложения ====================== */
 /* ====================== тема оформления ====================== */
 const THEMES = {
@@ -1174,7 +1249,8 @@ function applyFx(t) {
   }
   fx.innerHTML = h;
 }
-const fxKeep = () => { const t = S.theme || {}; return t.event ? { event: t.event } : {}; };
+const KEEP_KEYS = ['event', 'sound', 'news_seen', 'br_limit'];
+const fxKeep = () => { const t = S.theme || {}, o = {}; KEEP_KEYS.forEach(k => { if (t[k]) o[k] = t[k]; }); return o; };
 const saveThemeSoon = debounce(() => {
   api('settings.set', { theme: S.theme || {} }).then(d => { S.st.settings = d.settings; }).catch(e => toast(e.message, 'error'));
 }, 400);
@@ -1194,10 +1270,12 @@ function settingsHTML() {
   } else if (tab === 'look') {
     const t = S.theme || {}, c = themeBase(t);
     const row = (key, label, hint) => `<div class="color-row"><div><b>${label}</b><small>${hint}</small></div><input type="color" id="th-${key}" value="${esc(c[key] || (key === 'text' ? (lumOf(c.bg) > .45 ? '#1b1e2b' : '#e9eaf2') : '#000000'))}" aria-label="${label}"></div>`;
-    const stTile = ([id, p]) => `<button class="preset ${(t.style || '') === id && !t.preset && !t.accent && !t.play && !t.bg && !t.text ? 'on' : ''}" data-act="theme-style" data-id="${id}" title="${esc(p.desc)}"><div class="pv" style="background:${p.bg}"><i style="background:${p.accent}"></i><i style="background:${p.play}"></i></div><span>${p.emoji} ${esc(p.name)}</span></button>`;
+    const stTile = ([id, p]) => `<button class="preset ${(t.style || '') === id && !t.preset && !t.accent && !t.play && !t.bg && !t.text ? 'on' : ''}" data-act="theme-style" data-id="${id}" title="${esc(p.desc)}"><div class="pv" style="background:${p.bg}"><i style="background:${p.accent}"></i><i style="background:${p.play}"></i></div><span>${esc(p.name)}</span></button>`;
     const tile = ([id, p]) => `<button class="preset ${!t.style && t.preset === id && !t.accent && !t.play && !t.bg && !t.text ? 'on' : ''}" data-act="theme-preset" data-id="${id}"><div class="pv" style="background:${p.bg}"><i style="background:${p.accent}"></i><i style="background:${p.play}"></i></div><span>${p.emoji ? p.emoji + ' ' : ''}${esc(p.name)}</span></button>`;
     const evs = activeEvents(t);
-    body = `<section class="panel"><h2 class="sec">Стиль оформления</h2><div class="presets">${Object.entries(STYLES).map(stTile).join('')}</div>
+    body = `<section class="panel"><h2 class="sec">Звуки</h2>
+        <div class="color-row"><div><b>Звуки интерфейса</b><small>Щелчки кнопок, сигналы об успехе и ошибке. Пока звуки есть только в стандартном стиле, для остальных появятся позже.</small></div><label class="sw"><input type="checkbox" data-act="sound-toggle" ${(S.theme || {}).sound === 'off' ? '' : 'checked'}><i></i></label></div></section>
+      <section class="panel"><h2 class="sec">Стиль оформления</h2><div class="presets">${Object.entries(STYLES).map(stTile).join('')}</div>
         <p class="hint" style="margin-top:10px">${esc((STYLES[t.style || ''] || STYLES['']).desc)}. Стиль меняет не только цвета, но и шрифты, кнопки и рамки.</p></section>
       <section class="panel"><h2 class="sec">Цветовые темы</h2><div class="presets">${Object.entries(THEMES).map(tile).join('')}</div></section>
       <section class="panel"><h2 class="sec">Праздничные украшения</h2>
@@ -1449,6 +1527,8 @@ const A = {
     catch (e) { S.upd = { ...S.upd, busy: false }; render(); toast(e.message, 'error'); }
   },
   'set-tab': el => { S.setTab = el.dataset.tab; render(); },
+  'news-reload': () => loadNews(true),
+  'sound-toggle': el => { setTheme({ ...(S.theme || {}), sound: el.checked ? 'on' : 'off' }); sfx('toggle'); },
   'theme-style': el => { setTheme(el.dataset.id ? { ...fxKeep(), style: el.dataset.id } : fxKeep()); render(); },
   'theme-preset': el => { setTheme({ ...fxKeep(), preset: el.dataset.id }); render(); },
   'theme-reset': () => { setTheme(fxKeep()); render(); toast('Цвета сброшены', 'ok'); },
@@ -1489,7 +1569,7 @@ const A = {
   'br-type': el => { S.br.type = el.dataset.t; S.br.tags.clear(); drawTags(); $$('#br-types button').forEach(b => b.classList.toggle('on', b === el)); brSearch(true); },
   'br-tag': el => { const B = S.br, t = el.dataset.t; B.tags.has(t) ? B.tags.delete(t) : B.tags.add(t); drawTags(); brSearch(true); },
   'lim-toggle': () => drawLimit(!$('#br-lim .vsel-menu')),
-  'lim-set': el => { const B = S.br, n = +el.dataset.n; drawLimit(false); if (!B || !LIMITS.includes(n) || n === B.limit) return; B.limit = n; lsSet('br-limit', n); drawLimit(); brSearch(true); },
+  'lim-set': el => { const B = S.br, n = +el.dataset.n; drawLimit(false); if (!B || !LIMITS.includes(n) || n === B.limit) return; B.limit = n; setTheme({ ...(S.theme || {}), br_limit: String(n) }); drawLimit(); brSearch(true); },
   'br-tags-toggle': () => { const B = S.br; B.tagsOpen = !B.tagsOpen; drawTags(); },
   'br-tags-clear': () => { S.br.tags.clear(); drawTags(); brSearch(true); },
   'br-src': el => { const B = S.br; if (B.src === el.dataset.s) return; B.src = el.dataset.s; B.tags.clear(); drawTags(); $$('#br-src button').forEach(b => b.classList.toggle('on', b === el)); $('#br-q').placeholder = 'Искать на ' + (B.src === 'curseforge' ? 'CurseForge' : 'Modrinth'); brSearch(true); },
@@ -1649,6 +1729,7 @@ function render(opts = {}) {
   else if (r.name === 'shots') { v.innerHTML = shotsHTML(); if (S.shots?.list && opts.soft) drawShots(); else loadShots(); }
   else if (r.name === 'skins') { v.innerHTML = skinsHTML(); }
   else if (r.name === 'network') { v.innerHTML = networkHTML(); S.netSig = ''; loadNetwork(); }
+  else if (r.name === 'news') { v.innerHTML = newsHTML(); loadNews(); }
   else if (r.name === 'settings') v.innerHTML = settingsHTML();
   else if (r.name === 'i') renderInstance(r);
   else go('library');

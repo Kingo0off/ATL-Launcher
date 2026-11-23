@@ -1,6 +1,6 @@
 //! Самообновление: ищем новый релиз на GitHub, качаем .exe и подменяем им текущий.
 use crate::net::{self, Endpoints};
-use serde_json::Value;
+use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::path::Path;
 
@@ -136,4 +136,45 @@ pub fn apply(new: &Path) -> Result<(), String> {
 #[cfg(not(windows))]
 pub fn apply(_new: &Path) -> Result<(), String> {
     Err("Самообновление работает только в Windows.".into())
+}
+
+/// Превращает список релизов GitHub в записи для вкладки «Новости».
+/// Служебные строки коммита (Co-Authored-By, Claude-Session) вырезаются.
+pub fn parse_news(js: &Value) -> Vec<Value> {
+    js.as_array()
+        .map(|a| {
+            a.iter()
+                .filter(|r| !r["draft"].as_bool().unwrap_or(false))
+                .filter_map(|r| {
+                    let tag = r["tag_name"].as_str()?;
+                    let body: String = r["body"]
+                        .as_str()
+                        .unwrap_or("")
+                        .lines()
+                        .filter(|l| {
+                            let t = l.trim_start().to_lowercase();
+                            !(t.starts_with("co-authored-by:") || t.starts_with("claude-session:"))
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    Some(json!({
+                        "version": tag.trim_start_matches('v'),
+                        "title": r["name"].as_str().unwrap_or(tag),
+                        "date": r["published_at"].as_str().unwrap_or("").chars().take(10).collect::<String>(),
+                        "body": body.trim().chars().take(8000).collect::<String>(),
+                        "url": r["html_url"].as_str().unwrap_or(""),
+                        "prerelease": r["prerelease"].as_bool().unwrap_or(false)
+                    }))
+                })
+                .take(15)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Последние релизы с описанием изменений.
+pub fn news(ep: &Endpoints) -> Result<Vec<Value>, String> {
+    let base = ep.self_release.trim_end_matches("/latest");
+    let js = net::get_json(&format!("{}?per_page=15", base)).map_err(|e| format!("Не удалось загрузить новости: {}", e.0))?;
+    Ok(parse_news(&js))
 }

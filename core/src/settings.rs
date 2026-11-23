@@ -71,6 +71,27 @@ pub fn clean_theme(v: &Value) -> Result<Value, String> {
                 }
                 out.insert(k.clone(), json!(t));
             }
+            "sound" => {
+                let t = val.as_str().ok_or("Звук должен быть строкой")?;
+                if !matches!(t, "on" | "off") {
+                    return Err("Неизвестное значение звука".into());
+                }
+                out.insert(k.clone(), json!(t));
+            }
+            "news_seen" => {
+                let t = val.as_str().ok_or("Версия должна быть строкой")?;
+                if t.len() > 24 || !t.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-') {
+                    return Err("Неверная версия".into());
+                }
+                out.insert(k.clone(), json!(t));
+            }
+            "br_limit" => {
+                let t = val.as_str().ok_or("Число должно быть строкой")?;
+                if !matches!(t, "5" | "10" | "15" | "20" | "50" | "100") {
+                    return Err("Неверное число модов на странице".into());
+                }
+                out.insert(k.clone(), json!(t));
+            }
             "style" => {
                 let t = val.as_str().ok_or("Стиль должен быть строкой")?;
                 if !matches!(t, "" | "xp" | "win98" | "terminal" | "minecraft" | "aero") {

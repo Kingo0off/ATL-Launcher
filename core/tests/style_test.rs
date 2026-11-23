@@ -21,3 +21,34 @@ fn style_can_be_combined_with_event() {
     assert_eq!(t["style"], "xp");
     assert_eq!(t["event"], "newyear");
 }
+
+#[test]
+fn ui_state_keys_are_validated() {
+    let ok = clean_theme(&json!({"sound": "off", "news_seen": "3.1.44", "br_limit": "50"})).unwrap();
+    assert_eq!(ok["sound"], "off");
+    assert_eq!(ok["news_seen"], "3.1.44");
+    assert_eq!(ok["br_limit"], "50");
+    assert!(clean_theme(&json!({"sound": "loud"})).is_err());
+    assert!(clean_theme(&json!({"news_seen": "<b>"})).is_err());
+    assert!(clean_theme(&json!({"br_limit": "7"})).is_err());
+}
+
+#[test]
+fn news_drops_drafts_and_service_lines() {
+    use friendlauncher_core::selfupdate::parse_news;
+    let js = json!([
+        {"tag_name": "v3.1.44", "name": "Voxel 3.1.44", "published_at": "2026-11-24T10:00:00Z", "html_url": "https://github.com/x/y/releases/tag/v3.1.44",
+         "body": "Звуки и новости\n\n- Добавлены звуки\n\nCo-Authored-By: Claude <x@y>\nClaude-Session: https://claude.ai/code/s"},
+        {"tag_name": "v3.1.43", "draft": true, "body": "черновик"},
+        {"tag_name": "v3.1.42", "body": null}
+    ]);
+    let n = parse_news(&js);
+    assert_eq!(n.len(), 2);
+    assert_eq!(n[0]["version"], "3.1.44");
+    assert_eq!(n[0]["date"], "2026-11-24");
+    let body = n[0]["body"].as_str().unwrap();
+    assert!(body.contains("Добавлены звуки"));
+    assert!(!body.contains("Co-Authored") && !body.contains("Claude-Session"));
+    assert_eq!(n[1]["version"], "3.1.42");
+    assert_eq!(n[1]["body"], "");
+}

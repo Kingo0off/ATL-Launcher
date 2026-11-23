@@ -51,6 +51,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Voxel ${{ env.FL_VERSION }}
           make_latest: "true"
+          body: ${{ github.event.head_commit.message }}
           files: Voxel.exe
       - name: Журнал в ветку ci-logs (чтобы разработчик мог его прочитать)
         if: always()
