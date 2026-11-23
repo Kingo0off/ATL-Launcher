@@ -852,6 +852,11 @@ impl Api {
                 let ptype = if popt(p, "type").is_empty() { "mod" } else { popt(p, "type") };
                 Ok(json!({"versions": crate::catalog::mr_version_list(&self.endpoints, pstr(p, "id")?, popt(p, "mc"), popt(p, "loader"), ptype)?}))
             }
+            "curseforge.project" => Ok(crate::catalog::cf_project(&self.endpoints, &self.cf_key(), pstr(p, "id")?)?),
+            "curseforge.versions" => {
+                let ptype = if popt(p, "type").is_empty() { "mod" } else { popt(p, "type") };
+                Ok(json!({"versions": crate::catalog::cf_version_list(&self.endpoints, &self.cf_key(), pstr(p, "id")?, popt(p, "mc"), popt(p, "loader"), ptype)?}))
+            }
             "app.open_link" => {
                 let url = pstr(p, "url")?;
                 if !valid_link(url) {

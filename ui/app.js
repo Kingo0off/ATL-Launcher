@@ -695,6 +695,40 @@ function mdHtml(src) {
   return out.join('');
 }
 /* md-end */
+/* html-begin */
+/* Описание на CurseForge приходит как HTML. Разбираем его в «неживом» документе (DOMParser: скрипты не запускаются,
+   картинки не грузятся), потом заново собираем строку только из разрешённых тегов. Из атрибутов остаются
+   только https-адреса у ссылок и картинок, всё остальное (onclick, style, iframe, формы) выбрасывается. */
+const HTML_OK = new Set(['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'del', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'code', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'a', 'img', 'sub', 'sup']);
+const HTML_DROP = new Set(['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'textarea', 'select', 'link', 'meta', 'svg', 'math', 'video', 'audio', 'canvas', 'noscript', 'template', 'head', 'title']);
+function htmlSafe(src) {
+  let doc;
+  try { doc = new DOMParser().parseFromString(String(src || ''), 'text/html'); } catch { return ''; }
+  const walk = (node, depth) => {
+    if (depth > 60) return '';
+    let out = '';
+    for (const n of node.childNodes) {
+      if (n.nodeType === 3) { out += esc(n.nodeValue); continue; }
+      if (n.nodeType !== 1) continue;
+      const t = n.tagName.toLowerCase();
+      if (HTML_DROP.has(t)) continue;
+      const inner = walk(n, depth + 1);
+      if (!HTML_OK.has(t)) { out += inner; continue; }
+      if (t === 'br' || t === 'hr') { out += `<${t}>`; continue; }
+      if (t === 'img') { const u = n.getAttribute('src') || ''; if (safeHttps(u)) out += `<img src="${esc(u)}" alt="${esc(n.getAttribute('alt') || '')}" loading="lazy">`; continue; }
+      if (t === 'a') {
+        const u = (n.getAttribute('href') || '').trim();
+        out += safeHttps(u) ? `<a href="#" data-act="open-link" data-url="${esc(u)}">${inner}</a>` : inner;
+        continue;
+      }
+      if (t === 'table') { out += `<div class="tbl"><table>${inner}</table></div>`; continue; }
+      out += `<${t}>${inner}</${t}>`;
+    }
+    return out;
+  };
+  return walk(doc.body, 0);
+}
+/* html-end */
 
 /* ---- страница мода (Modrinth) ---- */
 let _tagRu;
@@ -706,13 +740,13 @@ async function openProject(h) {
   try { history.pushState({ brDetail: 1 }, ''); D.pushed = true; } catch { }
   drawDetail();
   $('#br-detail')?.scrollIntoView?.({ block: 'start' });
-  try { const p = await api('modrinth.project', { id: h.project_id }); if (B.detail !== D) return; D.p = p; }
+  try { const p = await api(B.src + '.project', { id: h.project_id }); if (B.detail !== D) return; D.p = p; }
   catch (e) { if (B.detail !== D) return; D.err = e.message; }
   drawDetail();
 }
 async function loadVersions() {
   const B = S.br, D = B.detail; if (!D || D.v) return;
-  try { const d = await api('modrinth.versions', { id: D.h.project_id, mc: B.mc, loader: B.type === 'mod' ? B.loader : '', type: B.type }); if (B.detail !== D) return; D.v = d.versions; }
+  try { const d = await api(B.src + '.versions', { id: D.h.project_id, mc: B.mc, loader: B.type === 'mod' ? B.loader : '', type: B.type }); if (B.detail !== D) return; D.v = d.versions; }
   catch (e) { if (B.detail !== D) return; D.verr = e.message; }
   drawDetail();
 }
@@ -724,7 +758,8 @@ function drawDetail() {
   const h = D.h, p = D.p, id = h.project_id;
   const done = B.installed.has(id), busy = B.busy.has(id);
   const label = B.type === 'modpack' ? 'Создать сборку' : B.ctx ? 'Установить' : 'Установить…';
-  const btn = busy ? '<button class="btn primary" disabled><span class="spin"></span> Ставлю…</button>'
+  const siteUrl = B.src === 'curseforge' ? (h.site_url || (p && p.site_url) || '') : 'https://modrinth.com/project/' + id;
+  const btn = h.blocked ? `<button class="btn" data-act="open-url" data-url="${esc(h.site_url)}" title="Автор запретил установку из сторонних лаунчеров">${ic('link', 16)} Скачать на сайте</button>` : busy ? '<button class="btn primary" disabled><span class="spin"></span> Ставлю…</button>'
     : done ? `<button class="btn" disabled>${ic('check', 16)} Установлено</button>`
       : `<button class="btn primary" data-act="br-install" data-pid="${esc(id)}">${ic('download', 16)} ${label}</button>`;
   const chips = ((p && p.categories) || h.categories || []).map(c => `<span class="chip">${esc(tagName(c))}</span>`).join('');
@@ -738,10 +773,10 @@ function drawDetail() {
       const link = (u, t) => u ? `<button class="btn sm" data-act="open-link" data-url="${esc(u)}">${ic('link', 13)} ${t}</button>` : '';
       const links = [link(p.links.source, 'Исходный код'), link(p.links.issues, 'Ошибки'), link(p.links.wiki, 'Вики'), link(p.links.discord, 'Discord')].join('');
       const gv = p.game_versions.slice(-8).reverse();
-      body = `<div class="proj-cols"><div class="md panel">${mdHtml(p.body) || '<p class="hint">У проекта нет описания.</p>'}</div>
+      body = `<div class="proj-cols"><div class="md panel">${(p.body_html ? htmlSafe(p.body_html) : mdHtml(p.body)) || '<p class="hint">У проекта нет описания.</p>'}</div>
         <aside class="proj-side">
           <div class="panel"><h4>Совместимость</h4>${p.loaders.length ? `<div class="chips">${p.loaders.map(l => `<span class="chip">${esc(LOADER_NAMES[l] || l)}</span>`).join('')}</div>` : ''}${gv.length ? `<div class="chips" style="margin-top:8px">${gv.map(v => `<span class="chip">${esc(v)}</span>`).join('')}</div>` : ''}
-            ${p.project_type === 'mod' ? `<p class="hint" style="margin-top:10px">Клиент: ${SIDE[p.client_side] || '—'}<br>Сервер: ${SIDE[p.server_side] || '—'}</p>` : ''}</div>
+            ${p.project_type === 'mod' && p.client_side ? `<p class="hint" style="margin-top:10px">Клиент: ${SIDE[p.client_side] || '—'}<br>Сервер: ${SIDE[p.server_side] || '—'}</p>` : ''}</div>
           ${links ? `<div class="panel"><h4>Ссылки</h4><div class="chips">${links}</div></div>` : ''}
           <div class="panel"><h4>Сведения</h4><p class="hint">${p.license ? 'Лицензия: ' + esc(p.license) + '<br>' : ''}${p.published ? 'Создан: ' + esc(fmtDate(p.published)) + '<br>' : ''}${p.updated ? 'Обновлён: ' + esc(fmtDate(p.updated)) : ''}</p></div>
         </aside></div>`;
@@ -766,7 +801,7 @@ function drawDetail() {
       <div class="proj-info"><h2>${esc(h.title)}<span class="by">${esc(h.author)}</span></h2><p>${esc((p && p.description) || h.description)}</p>
         <div class="proj-stats"><span>${ic('download', 14)} ${esc(fmtNum((p && p.downloads) || h.downloads))} скачиваний</span>${p ? `<span>${ic('heart', 14)} ${esc(fmtNum(p.followers))} подписчиков</span>` : ''}</div>
         <div class="chips">${chips}</div></div>
-      <div class="proj-act">${btn}<button class="btn ghost sm" data-act="open-url" data-url="https://modrinth.com/project/${esc(id)}">${ic('link', 13)} На сайте</button></div></div>
+      <div class="proj-act">${btn}${siteUrl ? `<button class="btn ghost sm" data-act="open-url" data-url="${esc(siteUrl)}">${ic('link', 13)} На сайте</button>` : ''}</div></div>
     <div class="seg proj-tabs">${tabs.map(([k, t]) => `<button data-act="br-tab" data-t="${k}" class="${D.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     <div class="proj-body">${body}</div>`;
 }
@@ -820,7 +855,7 @@ function drawHits() {
     const btn = h.blocked ? `<button class="btn" data-act="open-url" data-url="${esc(h.site_url)}" title="Автор запретил установку из сторонних лаунчеров">${ic('link', 16)} Скачать на сайте</button>` : busy ? '<button class="btn primary" disabled><span class="spin"></span> Ставлю…</button>'
       : done ? `<button class="btn" disabled>${ic('check', 16)} Установлено</button>`
         : `<button class="btn primary" data-act="br-install" data-pid="${esc(h.project_id)}">${ic('download', 16)} ${label}</button>`;
-    const open = B.src === 'modrinth' ? ` data-act="br-open" data-pid="${esc(h.project_id)}"` : '';
+    const open = ` data-act="br-open" data-pid="${esc(h.project_id)}"`;
     return `<article class="hit"><div class="hit-icon ${open ? 'link' : ''}"${open}>${h.icon_url ? `<img src="${esc(h.icon_url)}" alt="" loading="lazy" data-seed="${esc(h.project_id)}">` : art(h.project_id)}</div>
       <div class="hit-main"><h3>${open ? `<a href="#" class="plink"${open}>${esc(h.title)}</a>` : esc(h.title)}<span class="by">${esc(h.author)}</span></h3><p>${esc(h.description)}</p>
         <div class="chips">${h.categories.map(c => `<span class="chip">${esc(c)}</span>`).join('')}<button class="btn ghost sm site" data-act="open-url" data-url="${B.src === 'curseforge' ? esc(h.site_url) : 'https://modrinth.com/project/' + esc(h.project_id)}">${ic('link', 13)} На сайте</button></div></div>

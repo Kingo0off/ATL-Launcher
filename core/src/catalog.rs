@@ -419,6 +419,112 @@ fn cf_files(ep: &Endpoints, key: &str, mod_id: i64, mc: &str, loader: &str, ptyp
     Ok(files)
 }
 
+fn ver_key(v: &str) -> Vec<u32> {
+    v.split(|c: char| !c.is_ascii_digit()).filter(|x| !x.is_empty()).map(|x| x.parse().unwrap_or(0)).collect()
+}
+
+fn cf_loader_name(id: i64) -> Option<&'static str> {
+    Some(match id {
+        1 => "forge",
+        4 => "fabric",
+        5 => "quilt",
+        6 => "neoforge",
+        _ => return None,
+    })
+}
+
+/// Из ответа CurseForge `/mods/<id>` и `/mods/<id>/description` делает то же, что `trim_project` для Modrinth.
+/// Описание у CurseForge приходит как HTML, поэтому лежит в поле `body_html` (чистит его уже интерфейс).
+pub fn cf_trim_project(m: &Value, html: &str) -> Value {
+    let mut versions: Vec<String> = Vec::new();
+    let mut loaders: Vec<Value> = Vec::new();
+    for x in m["latestFilesIndexes"].as_array().cloned().unwrap_or_default() {
+        if let Some(g) = x["gameVersion"].as_str() {
+            if g.starts_with(|c: char| c.is_ascii_digit()) && !versions.iter().any(|v| v == g) {
+                versions.push(g.to_string());
+            }
+        }
+        if let Some(l) = x["modLoader"].as_i64().and_then(cf_loader_name) {
+            if !loaders.iter().any(|v| v == l) {
+                loaders.push(json!(l));
+            }
+        }
+    }
+    versions.sort_by(|a, b| ver_key(a).cmp(&ver_key(b)));
+    versions.truncate(300);
+    let cats: Vec<Value> = m["categories"].as_array().map(|c| c.iter().filter_map(|x| x["name"].as_str()).take(12).map(|n| json!(n)).collect()).unwrap_or_default();
+    let gallery: Vec<Value> = m["screenshots"]
+        .as_array()
+        .map(|g| {
+            g.iter()
+                .filter_map(|x| {
+                    let url = x["url"].as_str()?;
+                    Some(json!({"url": url, "title": x["title"].as_str().unwrap_or(""), "description": x["description"].as_str().unwrap_or(""), "featured": false}))
+                })
+                .take(24)
+                .collect()
+        })
+        .unwrap_or_default();
+    let ptype = match m["classId"].as_i64().unwrap_or(6) {
+        12 => "resourcepack",
+        6552 => "shader",
+        4471 => "modpack",
+        _ => "mod",
+    };
+    let l = &m["links"];
+    json!({
+        "project_id": format!("{}{}", CF_PREFIX, m["id"]), "slug": m["slug"], "title": m["name"].as_str().unwrap_or(""),
+        "description": m["summary"].as_str().unwrap_or(""), "body": "", "body_html": html.chars().take(300_000).collect::<String>(),
+        "icon_url": m["logo"]["url"].as_str().unwrap_or(""), "downloads": m["downloadCount"].as_f64().unwrap_or(0.0) as i64,
+        "followers": m["thumbsUpCount"].as_i64().unwrap_or(0), "categories": cats, "loaders": loaders,
+        "game_versions": versions, "gallery": gallery, "client_side": "", "server_side": "", "license": "",
+        "links": {"source": l["sourceUrl"].as_str().unwrap_or(""), "issues": l["issuesUrl"].as_str().unwrap_or(""), "wiki": l["wikiUrl"].as_str().unwrap_or(""), "discord": ""},
+        "published": m["dateCreated"].as_str().unwrap_or(""), "updated": m["dateModified"].as_str().unwrap_or(""),
+        "project_type": ptype, "site_url": l["websiteUrl"].as_str().unwrap_or("")
+    })
+}
+
+/// Файлы проекта CurseForge в том виде, в каком их показывает вкладка «Версии».
+pub fn cf_trim_files(files: &[Value]) -> Vec<Value> {
+    files
+        .iter()
+        .take(40)
+        .map(|f| {
+            let all = f["gameVersions"].as_array().cloned().unwrap_or_default();
+            let gv: Vec<Value> = all.iter().filter(|x| x.as_str().map_or(false, |s| s.starts_with(|c: char| c.is_ascii_digit()))).cloned().collect();
+            let ld: Vec<Value> = all
+                .iter()
+                .filter_map(|x| x.as_str())
+                .map(|s| s.to_lowercase())
+                .filter(|s| ["forge", "fabric", "quilt", "neoforge"].contains(&s.as_str()))
+                .map(|s| json!(s))
+                .collect();
+            let vt = match f["releaseType"].as_i64().unwrap_or(1) {
+                2 => "beta",
+                3 => "alpha",
+                _ => "release",
+            };
+            json!({
+                "id": f["id"], "name": f["displayName"].as_str().unwrap_or(""), "version_number": f["displayName"].as_str().or(f["fileName"].as_str()).unwrap_or(""),
+                "version_type": vt, "game_versions": gv, "loaders": ld, "downloads": f["downloadCount"].as_f64().unwrap_or(0.0) as i64,
+                "date_published": f["fileDate"].as_str().unwrap_or(""), "changelog": ""
+            })
+        })
+        .collect()
+}
+
+pub fn cf_project(ep: &Endpoints, key: &str, pid: &str) -> Result<Value, String> {
+    let id = cf_id(pid)?;
+    let m = cf_call(ep, key, &format!("/mods/{}", id), &[], None)?;
+    let html = cf_call(ep, key, &format!("/mods/{}/description", id), &[], None).ok().and_then(|d| d["data"].as_str().map(String::from)).unwrap_or_default();
+    Ok(cf_trim_project(&m["data"], &html))
+}
+
+pub fn cf_version_list(ep: &Endpoints, key: &str, pid: &str, mc: &str, loader: &str, ptype: &str) -> Result<Vec<Value>, String> {
+    let files = cf_files(ep, key, cf_id(pid)?, mc, loader, ptype)?;
+    Ok(cf_trim_files(&files))
+}
+
 fn cf_pick(files: &[Value]) -> Option<&Value> {
     files.iter().find(|f| f["releaseType"] == 1).or_else(|| files.first())
 }
