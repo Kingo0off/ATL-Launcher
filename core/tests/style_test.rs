@@ -58,3 +58,22 @@ fn update_notes_have_no_service_lines() {
     let t = clean_body("Звуки\n\n- пункт\n\nCo-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/x\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n");
     assert_eq!(t, "Звуки\n\n- пункт");
 }
+
+#[test]
+fn wipe_removes_folders_but_keeps_files() {
+    use friendlauncher_core::util::wipe_dirs;
+    let d = std::env::temp_dir().join(format!("fl-wipe-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&d);
+    std::fs::create_dir_all(d.join("local/a/minecraft/saves")).unwrap();
+    std::fs::create_dir_all(d.join("runtimes")).unwrap();
+    std::fs::write(d.join("settings.json"), "{}").unwrap();
+    std::fs::write(d.join("local/a/minecraft/saves/x.dat"), "1").unwrap();
+    let (n, failed) = wipe_dirs(&d);
+    assert_eq!(n, 2);
+    assert!(failed.is_empty());
+    assert!(!d.join("local").exists() && !d.join("runtimes").exists());
+    assert!(d.join("settings.json").exists());
+    let _ = std::fs::remove_dir_all(&d);
+    // несуществующая папка не падает
+    assert_eq!(wipe_dirs(&d), (0, vec![]));
+}

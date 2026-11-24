@@ -943,6 +943,20 @@ impl Api {
                 open_path(&target.ok_or("Папка не задана")?);
                 Ok(json!({}))
             }
+            "app.wipe_data" => {
+                if popt(p, "confirm") != "УДАЛИТЬ" {
+                    return Err("Нужно подтверждение".into());
+                }
+                if self.any_running() {
+                    return Err("Сначала закрой игру.".into());
+                }
+                if self.dir.components().count() < 3 {
+                    return Err("Слишком короткий путь к папке данных, удалять не буду.".into());
+                }
+                let (done, failed) = crate::util::wipe_dirs(&self.dir);
+                let _ = std::fs::create_dir_all(self.dir.join("local"));
+                Ok(json!({"removed": done, "failed": failed}))
+            }
             "app.open_url" => {
                 let url = pstr(p, "url")?;
                 const OK: [&str; 5] = [

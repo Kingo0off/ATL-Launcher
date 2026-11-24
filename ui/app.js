@@ -8,32 +8,97 @@ const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = se
 const enc = encodeURIComponent;
 const LOADER_NAMES = { vanilla: 'Vanilla', fabric: 'Fabric', quilt: 'Quilt', forge: 'Forge', neoforge: 'NeoForge' };
 
-/* Звуки интерфейса: синтезируются на лету (Web Audio), файлов не нужно.
-   Играют только в стандартном стиле и если не выключены в настройках. */
-let AC = null;
-const sfxOn = () => !document.documentElement.dataset.style && (S.theme || {}).sound !== 'off';
-function tone(t0, f1, f2, dur, type, vol) {
+/* Звуки интерфейса: синтезируются на лету (Web Audio), готовых файлов нет.
+   У каждого стиля свой набор: Windows XP, Windows 98, терминал, Майнкрафт и Aero звучат по-своему.
+   Это подражание эпохе, а не настоящие записи. Выключаются в настройках. */
+let AC = null, NZ = null;
+const sfxOn = () => (S.theme || {}).sound !== 'off';
+function tone(t, f1, f2, dur, type, vol) {
   const o = AC.createOscillator(), g = AC.createGain();
-  o.type = type; o.frequency.setValueAtTime(f1, t0); if (f2 !== f1) o.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
-  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  o.connect(g); g.connect(AC.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+  o.type = type; o.frequency.setValueAtTime(f1, t); if (f2 !== f1) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + dur + 0.02);
 }
-const SFX = {
-  click: t => tone(t, 520, 380, 0.06, 'triangle', 0.08),
-  tick: t => tone(t, 940, 820, 0.035, 'sine', 0.05),
-  confirm: t => { tone(t, 660, 660, 0.07, 'sine', 0.07); tone(t + 0.07, 880, 880, 0.09, 'sine', 0.07); },
-  toggle: t => tone(t, 700, 480, 0.05, 'square', 0.035),
-  play: t => { tone(t, 300, 900, 0.22, 'sine', 0.09); tone(t + 0.03, 450, 1350, 0.2, 'triangle', 0.04); },
-  open: t => tone(t, 420, 620, 0.08, 'sine', 0.05),
-  ok: t => { [523, 659, 784].forEach((f, i) => tone(t + i * 0.07, f, f, 0.12, 'sine', 0.07)); },
-  error: t => { tone(t, 220, 150, 0.2, 'sawtooth', 0.05); },
+function noise(t, dur, vol, freq, q) {
+  if (!NZ) { NZ = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); const d = NZ.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+  src.buffer = NZ; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(f); f.connect(g); g.connect(AC.destination); src.start(t); src.stop(t + dur + 0.02);
+}
+/* колокольчик: основной тон и два обертона, быстро затухает */
+function bell(t, f, dur, vol) { tone(t, f, f, dur, 'sine', vol); tone(t, f * 2.76, f * 2.76, dur * 0.5, 'sine', vol * 0.35); tone(t, f * 5.4, f * 5.4, dur * 0.25, 'sine', vol * 0.12); }
+const seq = (t, notes, step, dur, type, vol) => notes.forEach((f, i) => tone(t + i * step, f, f, dur, type, vol));
+const SFX_SETS = {
+  '': {
+    click: t => tone(t, 520, 380, 0.06, 'triangle', 0.05),
+    tick: t => tone(t, 940, 820, 0.035, 'sine', 0.03),
+    confirm: t => { tone(t, 660, 660, 0.07, 'sine', 0.045); tone(t + 0.07, 880, 880, 0.09, 'sine', 0.045); },
+    toggle: t => tone(t, 700, 480, 0.05, 'square', 0.022),
+    play: t => { tone(t, 300, 900, 0.22, 'sine', 0.055); tone(t + 0.03, 450, 1350, 0.2, 'triangle', 0.025); },
+    open: t => tone(t, 420, 620, 0.08, 'sine', 0.03),
+    ok: t => seq(t, [523, 659, 784], 0.07, 0.12, 'sine', 0.045),
+    error: t => tone(t, 220, 150, 0.2, 'sawtooth', 0.03),
+  },
+  xp: {
+    click: t => { noise(t, 0.025, 0.12, 2200, 1.2); tone(t, 1800, 1400, 0.02, 'sine', 0.02); },
+    tick: t => noise(t, 0.014, 0.08, 3200, 1.5),
+    confirm: t => bell(t, 1318, 0.4, 0.05),
+    toggle: t => { noise(t, 0.02, 0.09, 2500, 1.2); tone(t, 900, 700, 0.03, 'sine', 0.02); },
+    play: t => { seq(t, [622, 784, 932, 1245], 0.11, 0.35, 'sine', 0.04); tone(t, 311, 311, 0.7, 'sine', 0.03); },
+    open: t => { noise(t, 0.04, 0.07, 1500, 0.8); tone(t, 700, 1000, 0.06, 'sine', 0.025); },
+    ok: t => { bell(t, 1175, 0.35, 0.045); bell(t + 0.12, 1568, 0.45, 0.045); },
+    error: t => { tone(t, 311, 300, 0.28, 'triangle', 0.055); tone(t, 392, 380, 0.28, 'triangle', 0.045); },
+  },
+  win98: {
+    click: t => { tone(t, 1300, 1000, 0.016, 'square', 0.03); noise(t, 0.012, 0.06, 2500, 1); },
+    tick: t => tone(t, 1800, 1700, 0.01, 'square', 0.02),
+    confirm: t => seq(t, [784, 1047], 0.05, 0.07, 'square', 0.025),
+    toggle: t => tone(t, 600, 600, 0.02, 'square', 0.025),
+    play: t => { [262, 330, 392, 523].forEach(f => tone(t, f, f, 0.6, 'sine', 0.024)); bell(t + 0.18, 1047, 0.5, 0.03); },
+    open: t => { noise(t, 0.04, 0.06, 1200, 0.8); tone(t, 500, 800, 0.05, 'square', 0.015); },
+    ok: t => { seq(t, [523, 659, 784, 1047], 0.08, 0.09, 'square', 0.028); [523, 659, 784, 1047].forEach(f => tone(t + 0.34, f, f, 0.35, 'sine', 0.025)); },
+    error: t => { tone(t, 220, 200, 0.3, 'sawtooth', 0.04); tone(t, 233, 210, 0.3, 'sawtooth', 0.035); },
+  },
+  terminal: {
+    click: t => tone(t, 1200, 1200, 0.025, 'square', 0.025),
+    tick: t => tone(t, 2000, 2000, 0.012, 'square', 0.02),
+    confirm: t => seq(t, [880, 1320], 0.055, 0.05, 'square', 0.025),
+    toggle: t => tone(t, 700, 700, 0.02, 'square', 0.022),
+    play: t => seq(t, [600, 800, 1000, 1400], 0.05, 0.05, 'square', 0.025),
+    open: t => tone(t, 500, 900, 0.06, 'square', 0.02),
+    ok: t => seq(t, [1000, 1000], 0.1, 0.06, 'square', 0.025),
+    error: t => { tone(t, 160, 160, 0.28, 'square', 0.03); tone(t, 150, 150, 0.28, 'square', 0.025); },
+  },
+  minecraft: {
+    click: t => { tone(t, 180, 110, 0.06, 'triangle', 0.07); noise(t, 0.03, 0.07, 900, 0.7); },
+    tick: t => { tone(t, 220, 160, 0.04, 'triangle', 0.045); noise(t, 0.02, 0.04, 1100, 0.7); },
+    confirm: t => { tone(t, 250, 150, 0.07, 'triangle', 0.06); bell(t + 0.02, 880, 0.15, 0.04); },
+    toggle: t => tone(t, 300, 200, 0.04, 'triangle', 0.05),
+    play: t => seq(t, [523, 659, 784, 1047], 0.09, 0.14, 'sine', 0.045),
+    open: t => { tone(t, 120, 230, 0.14, 'sawtooth', 0.02); noise(t, 0.08, 0.04, 700, 0.6); },
+    ok: t => bell(t, 1500, 0.22, 0.05),
+    error: t => { noise(t, 0.14, 0.07, 500, 0.6); tone(t, 200, 90, 0.12, 'square', 0.03); },
+  },
+  aero: {
+    click: t => bell(t, 1400, 0.12, 0.035),
+    tick: t => bell(t, 2000, 0.06, 0.022),
+    confirm: t => { bell(t, 1046, 0.22, 0.035); bell(t + 0.06, 1568, 0.25, 0.035); },
+    toggle: t => bell(t, 1200, 0.08, 0.03),
+    play: t => { tone(t, 400, 1600, 0.35, 'sine', 0.03); bell(t + 0.15, 1568, 0.3, 0.03); bell(t + 0.22, 2093, 0.35, 0.025); },
+    open: t => tone(t, 500, 900, 0.12, 'sine', 0.022),
+    ok: t => seq(t, [1046, 1318, 1568], 0.08, 0.3, 'sine', 0.032),
+    error: t => { bell(t, 330, 0.3, 0.05); bell(t + 0.02, 311, 0.3, 0.04); },
+  },
 };
 function sfx(name) {
   try {
-    if (!sfxOn() || !SFX[name]) return;
+    if (!sfxOn()) return;
+    const set = SFX_SETS[document.documentElement.dataset.style || ''] || SFX_SETS[''];
+    if (!set[name]) return;
     if (!AC) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return; AC = new C(); }
     if (AC.state === 'suspended') AC.resume();
-    SFX[name](AC.currentTime + 0.005);
+    set[name](AC.currentTime + 0.005);
   } catch { /* звук необязателен */ }
 }
 function sfxFor(el) {
@@ -1274,7 +1339,7 @@ function settingsHTML() {
     const tile = ([id, p]) => `<button class="preset ${!t.style && t.preset === id && !t.accent && !t.play && !t.bg && !t.text ? 'on' : ''}" data-act="theme-preset" data-id="${id}"><div class="pv" style="background:${p.bg}"><i style="background:${p.accent}"></i><i style="background:${p.play}"></i></div><span>${p.emoji ? p.emoji + ' ' : ''}${esc(p.name)}</span></button>`;
     const evs = activeEvents(t);
     body = `<section class="panel"><h2 class="sec">Звуки</h2>
-        <div class="color-row"><div><b>Звуки интерфейса</b><small>Щелчки кнопок, сигналы об успехе и ошибке. Пока звуки есть только в стандартном стиле, для остальных появятся позже.</small></div><label class="sw"><input type="checkbox" data-act="sound-toggle" ${(S.theme || {}).sound === 'off' ? '' : 'checked'}><i></i></label></div></section>
+        <div class="color-row"><div><b>Звуки интерфейса</b><small>Щелчки кнопок, сигналы об успехе и ошибке. У каждого стиля свои звуки: в Windows XP, Windows 98, терминале, Майнкрафте и Aero они подстраиваются под стиль.</small></div><label class="sw"><input type="checkbox" data-act="sound-toggle" ${(S.theme || {}).sound === 'off' ? '' : 'checked'}><i></i></label></div></section>
       <section class="panel"><h2 class="sec">Стиль оформления</h2><div class="presets">${Object.entries(STYLES).map(stTile).join('')}</div>
         <p class="hint" style="margin-top:10px">${esc((STYLES[t.style || ''] || STYLES['']).desc)}. Стиль меняет не только цвета, но и шрифты, кнопки и рамки.</p></section>
       <section class="panel"><h2 class="sec">Цветовые темы</h2><div class="presets">${Object.entries(THEMES).map(tile).join('')}</div></section>
@@ -1300,7 +1365,10 @@ function settingsHTML() {
         ${u.available ? `<button class="btn primary" data-act="update-install" ${u.busy ? 'disabled' : ''}>${u.busy === 'install' ? 'Скачиваю…' : 'Обновить и перезапустить'}</button>` : ''}</div></section>`;
   } else {
     body = `<section class="panel"><h2 class="sec">Данные</h2><p class="hint" style="margin-bottom:12px;overflow-wrap:anywhere">${esc(S.st.data_dir)}</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn sm" data-act="open-app" data-what="data">${ic('folder', 15)} Папка данных</button><button class="btn sm" data-act="open-app" data-what="exports">${ic('folder', 15)} Папка экспорта</button></div></section>`;
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn sm" data-act="open-app" data-what="data">${ic('folder', 15)} Папка данных</button><button class="btn sm" data-act="open-app" data-what="exports">${ic('folder', 15)} Папка экспорта</button></div></section>
+      <section class="panel wipe-zone"><h2 class="sec">Опасная зона</h2>
+        <p class="hint">Удаляет все папки лаунчера: сборки, миры, моды, скриншоты, скачанную Java и кэш. Настройки и аккаунты остаются. Это нельзя отменить.</p>
+        <div style="margin-top:12px"><button class="btn danger" data-act="wipe-data">${ic('trash', 15)} Удалить все данные…</button></div></section>`;
   }
   const saves = tab === 'game' || tab === 'accounts';
   return `<div class="page"><div class="page-head"><div><h1>Настройки</h1><p class="sub">Версия ${esc(S.st.version)}</p></div><div class="head-actions">${saves ? '<button class="btn primary" data-act="save-app-settings">Сохранить</button>' : ''}</div></div>
@@ -1527,6 +1595,29 @@ const A = {
     catch (e) { S.upd = { ...S.upd, busy: false }; render(); toast(e.message, 'error'); }
   },
   'set-tab': el => { S.setTab = el.dataset.tab; render(); },
+  'wipe-data': () => {
+    modal({
+      title: 'Удалить все данные?',
+      body: `<p>Будут безвозвратно удалены <b>все сборки, миры, моды, скриншоты</b>, скачанная Java и кэш. Настройки и аккаунты останутся.</p>
+        <p class="hint" style="margin-top:10px">Если уверен, напиши слово <b>УДАЛИТЬ</b> большими буквами:</p>
+        <input type="text" id="wipe-word" autocomplete="off" placeholder="УДАЛИТЬ" style="margin-top:8px;width:100%">`,
+      foot: '<button class="btn" data-act="modal-close">Отмена</button><button class="btn danger" id="wipe-go" disabled>Удалить всё</button>',
+      onMount: m => {
+        const inp = $('#wipe-word', m), go = $('#wipe-go', m);
+        inp.addEventListener('input', () => { go.disabled = inp.value.trim() !== 'УДАЛИТЬ'; });
+        go.onclick = async () => {
+          if (inp.value.trim() !== 'УДАЛИТЬ') return;
+          go.disabled = true; go.textContent = 'Удаляю…';
+          try {
+            const r = await api('app.wipe_data', { confirm: 'УДАЛИТЬ' });
+            closeModal();
+            toast(r.failed && r.failed.length ? `Удалено папок: ${r.removed}. Не удалось: ${r.failed.join(', ')} (возможно, они заняты)` : `Готово, удалено папок: ${r.removed}`, r.failed && r.failed.length ? 'error' : 'ok');
+            await refresh(); location.hash = '#/library'; render();
+          } catch (e) { closeModal(); toast(e.message, 'error'); }
+        };
+      },
+    });
+  },
   'news-reload': () => loadNews(true),
   'sound-toggle': el => { setTheme({ ...(S.theme || {}), sound: el.checked ? 'on' : 'off' }); sfx('toggle'); },
   'theme-style': el => { setTheme(el.dataset.id ? { ...fxKeep(), style: el.dataset.id } : fxKeep()); render(); },

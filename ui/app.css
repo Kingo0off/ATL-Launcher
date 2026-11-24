@@ -524,6 +524,8 @@ button.pg:hover:not(:disabled) { border-color: var(--accent); color: var(--text)
 .vsel-btn .cnt { background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 0 7px; font-size: 12px; line-height: 18px; }
 .tag .ic { vertical-align: -1px; margin-left: 2px; }
 
+/* опасная зона в настройках */
+.wipe-zone { border-color: rgba(255, 107, 127, .45); }
 /* styles-begin */
 /* ====================== СТИЛИ ОФОРМЛЕНИЯ ====================== */
 /* ---------- Windows XP (Luna) ---------- */

@@ -136,3 +136,23 @@ pub fn urlencode(s: &str) -> String {
     }
     out
 }
+
+/// Удаляет все папки внутри `dir` (сборки, миры, Java, кэши). Файлы рядом (настройки, аккаунты) остаются,
+/// символические ссылки не трогаются. Возвращает число удалённых папок и список тех, что удалить не удалось.
+pub fn wipe_dirs(dir: &Path) -> (usize, Vec<String>) {
+    let mut done = 0;
+    let mut failed = Vec::new();
+    let Ok(rd) = std::fs::read_dir(dir) else { return (0, failed) };
+    for e in rd.flatten() {
+        let p = e.path();
+        let Ok(meta) = std::fs::symlink_metadata(&p) else { continue };
+        if !meta.is_dir() {
+            continue;
+        }
+        match std::fs::remove_dir_all(&p) {
+            Ok(_) => done += 1,
+            Err(_) => failed.push(e.file_name().to_string_lossy().to_string()),
+        }
+    }
+    (done, failed)
+}
