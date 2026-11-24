@@ -3,7 +3,7 @@ use serde_json::json;
 
 #[test]
 fn known_styles_are_kept() {
-    for s in ["", "xp", "win98", "terminal", "minecraft", "aero"] {
+    for s in ["", "xp", "win98", "terminal", "minecraft", "aero", "gameboy", "cyberpunk", "vapor", "paper", "notebook"] {
         let t = clean_theme(&json!({ "style": s })).unwrap();
         assert_eq!(t["style"], s);
     }

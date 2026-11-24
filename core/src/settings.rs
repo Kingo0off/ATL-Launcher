@@ -94,7 +94,7 @@ pub fn clean_theme(v: &Value) -> Result<Value, String> {
             }
             "style" => {
                 let t = val.as_str().ok_or("Стиль должен быть строкой")?;
-                if !matches!(t, "" | "xp" | "win98" | "terminal" | "minecraft" | "aero") {
+                if !matches!(t, "" | "xp" | "win98" | "terminal" | "minecraft" | "aero" | "gameboy" | "cyberpunk" | "vapor" | "paper" | "notebook") {
                     return Err("Неизвестный стиль".into());
                 }
                 out.insert(k.clone(), json!(t));
