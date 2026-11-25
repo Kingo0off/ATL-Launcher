@@ -854,7 +854,7 @@ impl Api {
                     }
                 })
             }
-            "curseforge.categories" => crate::catalog::cf_categories(&self.endpoints, &self.cf_key(), popt(p, "type")),
+            "curseforge.categories" => Ok(crate::catalog::cf_categories(&self.endpoints, &self.cf_key(), popt(p, "type"))?),
             "modrinth.project" => Ok(crate::catalog::mr_project(&self.endpoints, pstr(p, "id")?)?),
             "modrinth.versions" => {
                 let ptype = if popt(p, "type").is_empty() { "mod" } else { popt(p, "type") };
