@@ -372,7 +372,19 @@ fn cf_hit(m: &Value, ptype: &str) -> Value {
     })
 }
 
+pub fn cf_categories(ep: &Endpoints, key: &str, ptype: &str) -> Result<Value, String> {
+    let js = cf_call(ep, key, "/categories", &[("gameId", "432".into()), ("classId", cf_class(ptype).to_string())], None)?;
+    let items: Vec<Value> = js["data"].as_array().map(|a| a.iter()
+        .filter(|c| c["isClass"] != true && c["id"].as_u64().is_some() && c["name"].is_string())
+        .map(|c| json!({"id": c["id"], "name": c["name"]})).collect()).unwrap_or_default();
+    Ok(json!({"categories": items}))
+}
+
 pub fn cf_search(ep: &Endpoints, key: &str, q: &str, ptype: &str, mc: &str, loader: &str, sort: &str, offset: u64, limit: u64) -> Result<Value, String> {
+    cf_search_tags(ep, key, q, ptype, mc, loader, sort, offset, limit, &[])
+}
+
+pub fn cf_search_tags(ep: &Endpoints, key: &str, q: &str, ptype: &str, mc: &str, loader: &str, sort: &str, offset: u64, limit: u64, tags: &[String]) -> Result<Value, String> {
     let sort_field = match sort {
         "downloads" => 6,
         "newest" => 11,
@@ -395,6 +407,10 @@ pub fn cf_search(ep: &Endpoints, key: &str, q: &str, ptype: &str, mc: &str, load
     }
     if let (Some(id), true) = (cf_loader(loader), ptype == "mod" || ptype == "modpack") {
         params.push(("modLoaderType", id.to_string()));
+    }
+    let ids: Vec<u64> = tags.iter().filter_map(|t| t.parse::<u64>().ok()).filter(|id| *id > 0).take(10).collect();
+    if !ids.is_empty() {
+        params.push(("categoryIds", json!(ids).to_string()));
     }
     let js = cf_call(ep, key, "/mods/search", &params, None)?;
     let hits: Vec<Value> = js["data"].as_array().map(|a| a.iter().map(|m| cf_hit(m, ptype)).collect()).unwrap_or_default();

@@ -848,9 +848,13 @@ impl Api {
                         crate::catalog::mr_search(&self.endpoints, popt(p, "query"), ptype, popt(p, "mc"), popt(p, "loader"), &tags, sort, offset, limit)?
                     }
                 } else {
-                    crate::catalog::cf_search(&self.endpoints, &self.cf_key(), popt(p, "query"), ptype, popt(p, "mc"), popt(p, "loader"), sort, offset, limit.min(50))?
+                    {
+                        let tags: Vec<String> = p["tags"].as_array().map(|a| a.iter().filter_map(|t| t.as_str().map(String::from)).collect()).unwrap_or_default();
+                        crate::catalog::cf_search_tags(&self.endpoints, &self.cf_key(), popt(p, "query"), ptype, popt(p, "mc"), popt(p, "loader"), sort, offset, limit.min(50), &tags)?
+                    }
                 })
             }
+            "curseforge.categories" => crate::catalog::cf_categories(&self.endpoints, &self.cf_key(), popt(p, "type")),
             "modrinth.project" => Ok(crate::catalog::mr_project(&self.endpoints, pstr(p, "id")?)?),
             "modrinth.versions" => {
                 let ptype = if popt(p, "type").is_empty() { "mod" } else { popt(p, "type") };

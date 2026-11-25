@@ -792,9 +792,9 @@ function drawLimit(open) {
 function drawTags() {
   const B = S.br, box = $('#br-tags'), btn = $('#br-tagbtn');
   if (!B || !box) return;
-  const list = B.src === 'modrinth' ? BR_TAGS[B.type] || [] : [];
+  const list = B.src === 'modrinth' ? BR_TAGS[B.type] || [] : (B.cfTags?.[B.type] || []);
   if (btn) {
-    btn.hidden = !list.length;
+    btn.hidden = B.src === 'modrinth' && !list.length;
     btn.setAttribute('aria-expanded', !!B.tagsOpen);
     btn.innerHTML = `Теги${B.tags.size ? ` <b class="cnt">${B.tags.size}</b>` : ''}<svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="${B.tagsOpen ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6'}"/></svg>`;
   }
@@ -802,8 +802,8 @@ function drawTags() {
   box.classList.toggle('panel-open', !!(list.length && B.tagsOpen));
   if (!list.length || (!B.tagsOpen && !B.tags.size)) { box.hidden = true; box.innerHTML = ''; return; }
   box.hidden = false;
-  if (B.tagsOpen) box.innerHTML = list.map(([k, t]) => `<button type="button" class="tag ${B.tags.has(k) ? 'on' : ''}" data-act="br-tag" data-t="${k}" aria-pressed="${B.tags.has(k)}">${t}</button>`).join('') + clear;
-  else box.innerHTML = list.filter(([k]) => B.tags.has(k)).map(([k, t]) => `<button type="button" class="tag on" data-act="br-tag" data-t="${k}" title="Убрать тег">${t} ${ic('x', 11)}</button>`).join('') + clear;
+  if (B.tagsOpen) box.innerHTML = list.map(([k, t]) => `<button type="button" class="tag ${B.tags.has(k) ? 'on' : ''}" data-act="br-tag" data-t="${esc(k)}" aria-pressed="${B.tags.has(k)}">${esc(t)}</button>`).join('') + clear;
+  else box.innerHTML = list.filter(([k]) => B.tags.has(k)).map(([k, t]) => `<button type="button" class="tag on" data-act="br-tag" data-t="${esc(k)}" title="Убрать тег">${esc(t)} ${ic('x', 11)}</button>`).join('') + clear;
 }
 /* md-begin */
 /* Описание мода приходит в Markdown. Весь текст сначала экранируется, потом разрешаются только свои теги,
@@ -1003,7 +1003,7 @@ async function brSearch(reset) {
   B.hits = [];
   B.loading = true; B.err = ''; drawHits();
   try {
-    const d = await api(B.src + '.search', { query: B.q, type: B.type, mc: B.mc, loader: B.type === 'mod' || B.type === 'modpack' ? B.loader : '', sort: B.sort, offset: B.page * brLimit(B), limit: brLimit(B), tags: B.src === 'modrinth' ? [...B.tags] : [] });
+    const d = await api(B.src + '.search', { query: B.q, type: B.type, mc: B.mc, loader: B.type === 'mod' || B.type === 'modpack' ? B.loader : '', sort: B.sort, offset: B.page * brLimit(B), limit: brLimit(B), tags: [...B.tags] });
     if (my !== B.seq) return;
     B.hits = d.hits; B.total = d.total;
   } catch (e) { if (my !== B.seq) return; B.err = e.message; }
@@ -1712,13 +1712,23 @@ const A = {
   },
   'log-copy': async () => { try { await navigator.clipboard.writeText($('#logbox').innerText); toast('Журнал скопирован', 'ok'); } catch (e) { toast('Не удалось скопировать', 'error'); } },
   /* Modrinth */
-  'br-type': el => { S.br.type = el.dataset.t; S.br.tags.clear(); drawTags(); $$('#br-types button').forEach(b => b.classList.toggle('on', b === el)); brSearch(true); },
-  'br-tag': el => { const B = S.br, t = el.dataset.t; B.tags.has(t) ? B.tags.delete(t) : B.tags.add(t); drawTags(); brSearch(true); },
+  'br-type': el => { S.br.type = el.dataset.t; S.br.tags.clear(); S.br.tagsOpen = false; drawTags(); $$('#br-types button').forEach(b => b.classList.toggle('on', b === el)); brSearch(true); },
+  'br-tag': el => { const B = S.br, t = el.dataset.t; if (!B.tags.has(t) && B.tags.size >= (B.src === 'curseforge' ? 10 : 6)) { toast('Достигнут лимит выбранных тегов', 'info'); return; } B.tags.has(t) ? B.tags.delete(t) : B.tags.add(t); drawTags(); brSearch(true); },
   'lim-toggle': () => drawLimit(!$('#br-lim .vsel-menu')),
   'lim-set': el => { const B = S.br, n = +el.dataset.n; drawLimit(false); if (!B || !LIMITS.includes(n) || n === B.limit) return; B.limit = n; setTheme({ ...(S.theme || {}), br_limit: String(n) }); drawLimit(); brSearch(true); },
-  'br-tags-toggle': () => { const B = S.br; B.tagsOpen = !B.tagsOpen; drawTags(); },
+  'br-tags-toggle': async () => {
+    const B = S.br, type = B.type; B.tagsOpen = !B.tagsOpen;
+    if (B.tagsOpen && B.src === 'curseforge' && !B.cfTags?.[type]) {
+      try {
+        const d = await api('curseforge.categories', { type });
+        B.cfTags ||= {}; B.cfTags[type] = d.categories.map(c => [String(c.id), c.name]);
+        if (!B.cfTags[type].length) toast('Категории CurseForge не найдены', 'info');
+      } catch (e) { B.tagsOpen = false; toast(e.message, 'error'); }
+    }
+    if (S.br === B) drawTags();
+  },
   'br-tags-clear': () => { S.br.tags.clear(); drawTags(); brSearch(true); },
-  'br-src': el => { const B = S.br; if (B.src === el.dataset.s) return; B.src = el.dataset.s; B.tags.clear(); drawTags(); $$('#br-src button').forEach(b => b.classList.toggle('on', b === el)); $('#br-q').placeholder = 'Искать на ' + (B.src === 'curseforge' ? 'CurseForge' : 'Modrinth'); brSearch(true); },
+  'br-src': el => { const B = S.br; if (B.src === el.dataset.s) return; B.src = el.dataset.s; B.tags.clear(); B.tagsOpen = false; drawTags(); $$('#br-src button').forEach(b => b.classList.toggle('on', b === el)); $('#br-q').placeholder = 'Искать на ' + (B.src === 'curseforge' ? 'CurseForge' : 'Modrinth'); brSearch(true); },
   /* скриншоты и скины */
   'shots-reload': () => loadShots(),
   'shot-open': el => shotViewer(+el.dataset.i),
