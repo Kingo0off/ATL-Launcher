@@ -1801,7 +1801,7 @@ const A = {
     if (!h) return;
     if (B.type === 'modpack') {
       B.busy.add(h.project_id); drawHits(); toast(`Создаю сборку «${h.title}»…`);
-      try { const d = await api(B.src + '.install', { project_id: h.project_id, type: 'modpack', title: h.title, icon_url: h.icon_url, site_url: h.site_url || '' }); await refresh(); toast(`Сборка «${d.instance.name}» создана`, 'ok'); if (d.skipped?.length) toast(`${d.skipped.length} ${plural(d.skipped.length, 'мод не скачан', 'мода не скачано', 'модов не скачано')}: авторы запретили загрузку из лаунчеров. Скачай их на сайте CurseForge и добавь во вкладке «Моды».`, 'error'); goInst(d.instance.key); }
+      try { const d = await api(B.src + '.install', { project_id: h.project_id, type: 'modpack', title: h.title, icon_url: h.icon_url, site_url: h.site_url || '' }); await refresh(); toast(`Сборка «${d.instance.name}» создана`, 'ok'); if (d.icon_warning) toast('Сборка установлена, но её картинку скачать не удалось.', 'info'); if (d.skipped?.length) toast(`${d.skipped.length} ${plural(d.skipped.length, 'мод не скачан', 'мода не скачано', 'модов не скачано')}: авторы запретили загрузку из лаунчеров. Скачай их на сайте CurseForge и добавь во вкладке «Моды».`, 'error'); goInst(d.instance.key); }
       catch (e) { toast(e.message, 'error'); } finally { B.busy.delete(h.project_id); drawHits(); }
       return;
     }

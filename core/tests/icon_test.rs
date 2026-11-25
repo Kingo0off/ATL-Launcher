@@ -83,3 +83,33 @@ fn custom_icon_upload_select_and_reset() {
     assert_eq!(copy["instance"]["icon"], "");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn catalog_icon_hosts_and_formats_are_restricted() {
+    use friendlauncher_core::api::{catalog_icon_type, catalog_icon_url_ok};
+    assert!(catalog_icon_url_ok("https://cdn.modrinth.com/data/a.png"));
+    assert!(catalog_icon_url_ok("https://media.forgecdn.net/avatars/a.jpg"));
+    for bad in ["http://cdn.modrinth.com/a", "https://cdn.modrinth.com.evil.test/a", "https://cdn.modrinth.com@evil.test/a", "https://127.0.0.1/a"] {
+        assert!(!catalog_icon_url_ok(bad), "{}", bad);
+    }
+    assert_eq!(catalog_icon_type(&fake_png(32, 32)), Some("image/png"));
+    assert_eq!(catalog_icon_type(&[0xff, 0xd8, 0xff, 0]), Some("image/jpeg"));
+    assert_eq!(catalog_icon_type(b"RIFF1234WEBP"), Some("image/webp"));
+    assert_eq!(catalog_icon_type(b"<html>"), None);
+}
+
+#[test]
+fn downloaded_jpeg_icon_is_served_as_jpeg() {
+    let dir = temp_dir("catalog-jpeg");
+    let api = Api::new(dir.clone());
+    let inst = create(&api);
+    let id = inst["id"].as_str().unwrap();
+    let key = format!("local:{}", id);
+    let jpeg = vec![0xff, 0xd8, 0xff, 0xd9];
+    std::fs::write(dir.join("local").join(id).join("icon.png"), &jpeg).unwrap();
+    api.call("instances.update", &json!({"id": id, "icon": "custom"})).unwrap();
+    match api.call_out("insticon", &json!({"key": key})).unwrap() {
+        Out::Image(bytes, mime) => assert_eq!((bytes, mime), (jpeg, "image/jpeg")),
+        _ => panic!("нет картинки"),
+    }
+}

@@ -219,6 +219,35 @@ pub fn valid_icon(s: &str) -> bool {
     s.is_empty() || s == "custom"
 }
 
+/// Картинки каталога принимаем только с известных CDN, без перенаправлений.
+pub fn catalog_icon_url_ok(url: &str) -> bool {
+    if url.len() > 2000 || url.chars().any(|c| c.is_whitespace() || c.is_control()) { return false; }
+    let rest = match url.strip_prefix("https://") { Some(s) => s, None => return false };
+    let host = rest.split('/').next().unwrap_or("");
+    matches!(host, "cdn.modrinth.com" | "media.forgecdn.net" | "mediafilez.forgecdn.net")
+}
+
+pub fn catalog_icon_type(data: &[u8]) -> Option<&'static str> {
+    if data.starts_with(b"\x89PNG\r\n\x1a\n") { Some("image/png") }
+    else if data.starts_with(&[0xff, 0xd8, 0xff]) { Some("image/jpeg") }
+    else if data.len() >= 12 && &data[..4] == b"RIFF" && &data[8..12] == b"WEBP" { Some("image/webp") }
+    else { None }
+}
+
+fn fetch_catalog_icon(url: &str) -> Result<Vec<u8>, String> {
+    use std::io::Read;
+    if !catalog_icon_url_ok(url) { return Err("Недоверенный адрес картинки".into()); }
+    let agent = ureq::AgentBuilder::new().redirects(0)
+        .timeout_connect(Duration::from_secs(8)).timeout_read(Duration::from_secs(15)).build();
+    let response = agent.get(url).call().map_err(|_| "Не удалось скачать картинку".to_string())?;
+    let mut data = Vec::new();
+    response.into_reader().take((2 << 20) + 1).read_to_end(&mut data).map_err(|_| "Не удалось прочитать картинку".to_string())?;
+    if data.len() > (2 << 20) || catalog_icon_type(&data).is_none() {
+        return Err("Неподдерживаемая или слишком большая картинка".into());
+    }
+    Ok(data)
+}
+
 /// Внешнюю ссылку из описания мода можно открыть, только если это обычный https-адрес.
 pub fn valid_link(u: &str) -> bool {
     u.len() > 8 && u.len() <= 2000 && u.starts_with("https://") && !u.chars().any(|c| c.is_whitespace() || c.is_control())
@@ -436,7 +465,20 @@ impl Api {
             let _ = std::fs::remove_file(&tmp);
             let mut inst = imported?;
             let skipped = inst.as_object_mut().and_then(|m| m.remove("skipped")).unwrap_or_else(|| json!([]));
-            let mut out = json!({"instance": self.item_local(&inst, &self.stats())});
+            let icon_url = popt(p, "icon_url");
+            let mut icon_warning = false;
+            if !icon_url.is_empty() {
+                let result = (|| -> Result<Value, String> {
+                    let data = fetch_catalog_icon(icon_url)?;
+                    let id = inst["id"].as_str().ok_or("Нет идентификатора сборки")?;
+                    std::fs::write(self.icon_path(id), data).map_err(|e| e.to_string())?;
+                    let mut updated = inst.clone();
+                    updated["icon"] = json!("custom");
+                    self.store.save(&updated)
+                })();
+                match result { Ok(saved) => inst = saved, Err(_) => icon_warning = true }
+            }
+            let mut out = json!({"instance": self.item_local(&inst, &self.stats()), "icon_warning": icon_warning});
             if cf {
                 out["skipped"] = skipped;
             }
@@ -597,7 +639,7 @@ impl Api {
             "insticon" => {
                 let r = self.local_ref(pstr(p, "key")?)?;
                 Ok(match std::fs::read(self.icon_path(&r.id)) {
-                    Ok(b) => Out::Image(b, "image/png"),
+                    Ok(b) => { let kind = catalog_icon_type(&b).unwrap_or("image/png"); Out::Image(b, kind) },
                     Err(_) => Out::Missing,
                 })
             }
