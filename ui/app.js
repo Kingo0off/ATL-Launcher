@@ -749,7 +749,7 @@ function drawCreate(tab) {
   const body = $('#cr-body');
   if (tab === 'import') {
     body.innerHTML = `<div class="dropzone" id="imp-zone"><p style="margin-bottom:12px">Выбери или перетащи файл сборки</p><button class="btn primary" data-act="imp-pick">${ic('download')} Выбрать файл</button>
-      <input type="file" id="imp-file" accept=".mrpack,.zip" hidden><p class="hint" style="margin-top:14px">.mrpack с Modrinth, экспорт Voxel или .zip из Prism / MultiMC</p></div>`;
+      <input type="file" id="imp-file" accept=".mrpack,.zip" hidden><p class="hint" style="margin-top:14px">.mrpack с Modrinth, экспорт ATL Launcher или .zip из Prism / MultiMC</p></div>`;
     return;
   }
   body.innerHTML = `<label class="fld"><span>Название</span><input type="text" id="cr-name" placeholder="Например, Выживание" maxlength="60"></label>
@@ -1248,7 +1248,7 @@ async function loadNews(force) {
   if (route().name === 'news') { drawNews(); markNewsSeen(); } else renderRail(route());
 }
 function newsDate(d) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); if (!m) return ''; return `${+m[3]} ${['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'][+m[2] - 1]} ${m[1]}`; }
-function newsHTML() { return `<div class="page"><div class="page-head"><div><h1>Новости</h1><p class="sub">Что нового в Voxel: изменения в каждой версии</p></div><div class="head-actions"><button class="btn" data-act="news-reload">${ic('refresh', 15)} Обновить</button></div></div><div id="news-list"></div></div>`; }
+function newsHTML() { return `<div class="page"><div class="page-head"><div><h1>Новости</h1><p class="sub">Что нового в ATL Launcher: изменения в каждой версии</p></div><div class="head-actions"><button class="btn" data-act="news-reload">${ic('refresh', 15)} Обновить</button></div></div><div id="news-list"></div></div>`; }
 function drawNews() {
   const box = $('#news-list'), N = S.news; if (!box || !N) return;
   if (N.loading && !N.list) { box.innerHTML = '<div class="empty"><span class="spin"></span><p style="margin-top:12px">Загружаю новости…</p></div>'; return; }
@@ -1257,7 +1257,7 @@ function drawNews() {
   const cur = S.st.version;
   box.innerHTML = N.list.map((n, i) => {
     const tag = n.version === cur ? '<span class="news-tag cur">У тебя эта версия</span>' : i === 0 && newerVer(n.version, cur) ? '<span class="news-tag new">Новая</span>' : '';
-    return `<article class="panel news-item"><h2 class="sec">Voxel ${esc(n.version)} ${tag}</h2>${n.date ? `<p class="news-date">${esc(newsDate(n.date))}</p>` : ''}<div class="md">${mdHtml(n.body) || '<p class="hint">Описания нет.</p>'}</div>${n.url ? `<p style="margin-top:12px"><button class="btn ghost sm" data-act="open-link" data-url="${esc(n.url)}">${ic('link', 13)} Открыть на GitHub</button></p>` : ''}</article>`;
+    return `<article class="panel news-item"><h2 class="sec">ATL Launcher ${esc(n.version)} ${tag}</h2>${n.date ? `<p class="news-date">${esc(newsDate(n.date))}</p>` : ''}<div class="md">${mdHtml(n.body) || '<p class="hint">Описания нет.</p>'}</div>${n.url ? `<p style="margin-top:12px"><button class="btn ghost sm" data-act="open-link" data-url="${esc(n.url)}">${ic('link', 13)} Открыть на GitHub</button></p>` : ''}</article>`;
   }).join('');
 }
 const newerVer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1275,7 +1275,7 @@ const THEMES = {
 };
 /* Стили меняют не только цвета, но и шрифты, рамки, объём и украшения. Сами стили описаны в app.css: html[data-style="..."] */
 const STYLES = {
-  '': { name: 'Стандартный', emoji: '🟣', bg: '#0f1117', accent: '#9b7cff', play: '#ffcf5a', desc: 'Современный тёмный вид Voxel' },
+  '': { name: 'Стандартный', emoji: '🟣', bg: '#0f1117', accent: '#9b7cff', play: '#ffcf5a', desc: 'Современный тёмный вид ATL Launcher' },
   xp: { name: 'Windows XP', emoji: '🪟', bg: '#ece9d8', accent: '#245edb', play: '#3c9f2d', desc: 'Синие заголовки, бежевые окна, зелёная кнопка «Пуск»' },
   win98: { name: 'Windows 98', emoji: '💾', bg: '#008080', accent: '#000080', play: '#c0c0c0', desc: 'Серые объёмные кнопки, бирюзовый рабочий стол' },
   terminal: { name: 'Терминал', emoji: '🖥️', bg: '#020a04', accent: '#33ff66', play: '#ffb000', desc: 'Зелёные буквы на чёрном, строки развёртки как у старого монитора' },
@@ -1410,7 +1410,7 @@ function settingsHTML() {
         <p class="hint" style="margin-top:10px">Изменения применяются сразу и запоминаются.</p></section>`;
   } else if (tab === 'about') {
     const u = S.upd || {};
-    body = `<section class="panel support-panel"><h2 class="sec">Поддержать проект</h2><p class="hint">Voxel делается в свободное время. Если лаунчер пригодился, можно поддержать его на Boosty.</p>
+    body = `<section class="panel support-panel"><h2 class="sec">Поддержать проект</h2><p class="hint">ATL Launcher делается в свободное время. Если лаунчер пригодился, можно поддержать его на Boosty.</p>
       <div style="margin-top:14px"><button class="btn primary" data-act="open-url" data-url="https://boosty.to/kingo0offf">${ic('heart', 15)} Поддержать на Boosty</button></div></section>
       <section class="panel"><h2 class="sec">Версия</h2><p>Установлена: <b>${esc(S.st.version)}</b></p>
       <p class="hint" style="margin-top:6px">${u.error ? esc(u.error) : u.available ? 'Доступна новая версия: <b>' + esc(u.latest) + '</b>' : u.checked ? 'У тебя последняя версия.' : 'Проверка ещё не выполнялась.'}</p>

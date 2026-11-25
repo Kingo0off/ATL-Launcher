@@ -38,11 +38,14 @@ jobs:
           set -o pipefail
           cargo build --release -p friendlauncher --color never 2>&1 | tee "$RUNNER_TEMP/build.log"
       - name: Имя файла для скачивания
-        run: cp target/release/friendlauncher.exe Voxel.exe
+        run: |
+          cp target/release/friendlauncher.exe ATL-Launcher.exe
+          # Старые версии (Voxel) ищут в релизе файл Voxel.exe, чтобы обновиться. Кладём копию.
+          cp target/release/friendlauncher.exe Voxel.exe
       - uses: actions/upload-artifact@v4
         with:
-          name: Voxel-rust-exe
-          path: Voxel.exe
+          name: ATL-Launcher-exe
+          path: ATL-Launcher.exe
       - name: Описание релиза (из сообщения коммита, без служебных строк)
         if: github.event_name == 'push'
         env:
@@ -54,10 +57,12 @@ jobs:
         with:
           tag_name: ${{ env.VERSION_TAG }}
           target_commitish: ${{ github.sha }}
-          name: Voxel ${{ env.FL_VERSION }}
+          name: ATL Launcher ${{ env.FL_VERSION }}
           make_latest: "true"
           body_path: release_body.md
-          files: Voxel.exe
+          files: |
+            ATL-Launcher.exe
+            Voxel.exe
       - name: Журнал в ветку ci-logs (чтобы разработчик мог его прочитать)
         if: always()
         run: |

@@ -2,7 +2,7 @@
 name = "friendlauncher-core"
 version = "3.0.0"
 edition = "2021"
-description = "Логика Voxel: локальный сервер, API, настройки"
+description = "Логика ATL Launcher: локальный сервер, API, настройки"
 
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }

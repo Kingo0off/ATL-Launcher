@@ -1,4 +1,4 @@
-//! Импорт сборок (.mrpack, CurseForge, экспорт Voxel, Prism/MultiMC) и экспорт в .zip.
+//! Импорт сборок (.mrpack, CurseForge, экспорт ATL Launcher, Prism/MultiMC) и экспорт в .zip.
 use crate::catalog::{cf_dir_for, cf_lookup_files, cf_lookup_mods, cf_sha1, CF_PREFIX};
 use crate::instances::{save_track, Store};
 use crate::net::{download_many, Endpoints, Progress, Task};
@@ -123,7 +123,7 @@ pub fn import_archive(store: &Store, ep: &Endpoints, cf_key: &str, path: &Path, 
         rollback(store, &inst, r)?;
         return Ok(inst);
     }
-    Err("Не удалось распознать архив. Поддерживаются .mrpack, сборки CurseForge, экспорт Voxel и zip из Prism/MultiMC.".into())
+    Err("Не удалось распознать архив. Поддерживаются .mrpack, сборки CurseForge, экспорт ATL Launcher и zip из Prism/MultiMC.".into())
 }
 
 fn host_of(url: &str) -> String {

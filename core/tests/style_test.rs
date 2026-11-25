@@ -37,7 +37,7 @@ fn ui_state_keys_are_validated() {
 fn news_drops_drafts_and_service_lines() {
     use friendlauncher_core::selfupdate::parse_news;
     let js = json!([
-        {"tag_name": "v3.1.44", "name": "Voxel 3.1.44", "published_at": "2026-11-24T10:00:00Z", "html_url": "https://github.com/x/y/releases/tag/v3.1.44",
+        {"tag_name": "v3.1.44", "name": "ATL Launcher 3.1.44", "published_at": "2026-11-24T10:00:00Z", "html_url": "https://github.com/x/y/releases/tag/v3.1.44",
          "body": "Звуки и новости\n\n- Добавлены звуки\n\nCo-Authored-By: Claude <x@y>\nClaude-Session: https://claude.ai/code/s"},
         {"tag_name": "v3.1.43", "draft": true, "body": "черновик"},
         {"tag_name": "v3.1.42", "body": null}

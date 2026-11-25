@@ -1,19 +1,24 @@
 use std::path::PathBuf;
 
-/// Папка `Voxel`. Если осталась папка под прежним названием, она переименовывается
-/// (сборки, миры и аккаунты сохраняются). Не вышло переименовать: работаем со старой папкой.
+/// Папка `ATL Launcher`. Если осталась папка под прежним названием (Voxel или FriendLauncher),
+/// она переименовывается (сборки, миры и аккаунты сохраняются). Не вышло переименовать:
+/// работаем со старой папкой.
 fn pick(root: PathBuf) -> PathBuf {
-    let new = root.join("Voxel");
-    let old = root.join("FriendLauncher");
-    if !new.exists() && old.is_dir() && std::fs::rename(&old, &new).is_err() {
-        return old;
+    let new = root.join("ATL Launcher");
+    if !new.exists() {
+        for name in ["Voxel", "FriendLauncher"] {
+            let old = root.join(name);
+            if old.is_dir() {
+                return if std::fs::rename(&old, &new).is_err() { old } else { new };
+            }
+        }
     }
     new
 }
 
 /// Папка данных. Формат тот же, что у Python-версии, поэтому сборки и настройки общие.
 pub fn data_dir() -> PathBuf {
-    let base = if let Ok(p) = std::env::var("VOXEL_HOME") {
+    let base = if let Ok(p) = std::env::var("ATL_HOME") {
         PathBuf::from(p)
     } else if cfg!(windows) {
         let root = std::env::var("APPDATA")

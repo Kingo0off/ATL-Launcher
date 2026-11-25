@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::path::Path;
 
-pub const ASSET: &str = "Voxel.exe";
+pub const ASSET: &str = "ATL-Launcher.exe";
 
 #[derive(Clone, Debug)]
 pub struct Info {
@@ -102,6 +102,7 @@ pub fn cleanup() {
     if let Ok(cur) = std::env::current_exe() {
         let _ = std::fs::remove_file(cur.with_extension("old"));
         let _ = std::fs::remove_file(cur.with_file_name("Voxel.old"));
+        let _ = std::fs::remove_file(cur.with_file_name("ATL-Launcher.old"));
     }
 }
 
@@ -111,8 +112,8 @@ pub fn apply(new: &Path) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     // Если файл лаунчера переименовали или переложили, пока он работал, прежнего пути уже нет.
-    // Тогда кладём новую версию рядом под именем Voxel.exe.
-    let cur = if exe.exists() { exe } else { exe.with_file_name("Voxel.exe") };
+    // Тогда кладём новую версию рядом под именем ATL-Launcher.exe.
+    let cur = if exe.exists() { exe } else { exe.with_file_name("ATL-Launcher.exe") };
     let old = cur.with_extension("old");
     let _ = std::fs::remove_file(&old);
     if cur.exists() {

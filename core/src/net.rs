@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
-pub const UA: &str = "Voxel/3.0";
+pub const UA: &str = "ATLLauncher/3.0";
 
 #[derive(Debug, Clone)]
 pub struct NetError(pub String);

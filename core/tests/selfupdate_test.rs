@@ -40,12 +40,12 @@ fn check_and_download() {
     let exe: Vec<u8> = b"MZ\x90\x00 fake exe body".to_vec();
     let sha: String = Sha256::digest(&exe).iter().map(|b| format!("{:02x}", b)).collect();
     let mut f: HashMap<String, Vec<u8>> = HashMap::new();
-    f.insert("/dl/Voxel.exe".into(), exe.clone());
+    f.insert("/dl/ATL-Launcher.exe".into(), exe.clone());
     let base = mock(f.clone());
     let release = |digest: &str| {
         json!({"tag_name": "v3.9.1", "body": "Новое", "assets": [
             {"name": "other.zip", "size": 1, "browser_download_url": format!("{}/x", base)},
-            {"name": "Voxel.exe", "size": exe.len(), "digest": digest, "browser_download_url": format!("{}/dl/Voxel.exe", base)}]})
+            {"name": "ATL-Launcher.exe", "size": exe.len(), "digest": digest, "browser_download_url": format!("{}/dl/ATL-Launcher.exe", base)}]})
     };
     f.insert("/rel_ok".into(), release(&format!("sha256:{}", sha)).to_string().into_bytes());
     f.insert("/rel_bad".into(), release("sha256:00").to_string().into_bytes());
