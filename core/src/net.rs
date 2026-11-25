@@ -67,7 +67,7 @@ impl Default for Endpoints {
             neoforge_legacy_meta: "https://maven.neoforged.net/releases/net/neoforged/forge/maven-metadata.xml".into(),
             neoforge_legacy_maven: "https://maven.neoforged.net/releases/net/neoforged/forge".into(),
             ms_base: "https://login.microsoftonline.com/consumers/oauth2/v2.0".into(),
-            self_release: "https://api.github.com/repos/Kingo0off/Voxel/releases/latest".into(),
+            self_release: "https://api.github.com/repos/Kingo0off/ATL-Launcher/releases/latest".into(),
             xbl: "https://user.auth.xboxlive.com/user/authenticate".into(),
             xsts: "https://xsts.auth.xboxlive.com/xsts/authorize".into(),
             mc_api: "https://api.minecraftservices.com".into(),
