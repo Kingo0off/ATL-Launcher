@@ -859,7 +859,15 @@ html[data-style=minecraft] {
   --font: "VoxelBlock", "Segoe UI Semibold", Verdana, sans-serif;
   --dirt: #6b4a2b;
 }
-html[data-style=minecraft] body { font-size: 14px; background: linear-gradient(rgba(0, 0, 0, .6), rgba(0, 0, 0, .6)), url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAB5UlEQVR4Xj1SS4rjMBQs/5pYFsbYwosmyHtdYw4wDJN9+mZNlr0amAv0LbyeiBAYIxlhFKnpz2RwHqSWqlJRr95Lnp6eOOdN3bplbuoWN5zOehiGqqqMMQ/5JiuSGGNZltbaVCnFGKsb7r3PiuR01u+fb8MwfH1cjTFCCLfMMUYhRIyx67rcGDPdoJQyxvR9X5YlgB9bB+DljwEQQgAghDDGpA/5Zvso+74H8JBvAFQ3PI//SMpu0FpfLpcQQu6W2Xvf9/3hcFiNv/9cnHfL3HXd82jpj5Rycd5ayxjLpZQAFucB7HY7a21Tt03dWruqAXi/Um6ZSZlebiDvGKP3/v3zLSsSAKQAMI6j915rvX4AcDweiQghDMNAQzPG7vaccxpSa51/fVwBZEVCYSgJY6wsy8Wts1ETFGltCcAwDHczKWXXdQDIKITglrlu1s1Ss2lWJMQppdwyG2NijLTs98+3pm5fX1+pQIqUxhizIqmqSmvNGBNCENf3vRCibvh+v6dI9J6HEIQQ3/gJKv39dx13mqZ7dHLZ7Xbk6L1PvffjON6uYGOtpYXQwVGP0zR9fVzpnXOecs63j/LXqaGDoTCn8yqVUt63BqCpWynl2hLR1INb5hDC9lFSv0opzjkZ1Q3XWv8HXo4l/x1nZPsAAAAASUVORK5CYII=") 0 0 / 64px 64px; image-rendering: pixelated; }
+html[data-style=minecraft] body {
+  font-size: 14px;
+  background-color: #26251f;
+  background-image:
+    linear-gradient(180deg, rgba(36, 47, 30, .52), rgba(25, 24, 21, .88)),
+    repeating-linear-gradient(0deg, transparent 0 63px, rgba(0, 0, 0, .12) 63px 64px),
+    repeating-linear-gradient(90deg, transparent 0 63px, rgba(0, 0, 0, .12) 63px 64px);
+  background-attachment: fixed;
+}
 html[data-style=minecraft] * { font-weight: 400 !important; font-synthesis: none; letter-spacing: 0; }
 html[data-style=minecraft] * { border-radius: 0 !important; }
 html[data-style=minecraft] h1, html[data-style=minecraft] h2, html[data-style=minecraft] h3, html[data-style=minecraft] .btn, html[data-style=minecraft] .rail-btn { text-shadow: 2px 2px 0 #3f3f3f; }
