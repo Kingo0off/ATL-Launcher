@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ATL Launcher — лаунчер Minecraft для игры с друзьями</title>
+<meta name="description" content="ATL Launcher: бесплатный лаунчер Minecraft с модами, сборками и комнатами для игры с друзьями. Один файл, без установщика.">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: тёмное окно лаунчера как главный образ, карточки и чипы в духе каталога модов, всё перекрашивается темой. */
+:root {
+  --bg: #0f1117;
+  --text: #e9eaf2;
+  --accent: #9b7cff;
+  --play: #ffcf5a;
+  --on-accent: #130b33;
+  --ok: #3ddc84;
+  --ok-ink: #04210f;
+  --s1: color-mix(in srgb, var(--bg) 94%, var(--text));
+  --s2: color-mix(in srgb, var(--bg) 89%, var(--text));
+  --s3: color-mix(in srgb, var(--bg) 83%, var(--text));
+  --line: color-mix(in srgb, var(--bg) 84%, var(--text));
+  --muted: color-mix(in srgb, var(--text) 62%, var(--bg));
+  --faint: color-mix(in srgb, var(--text) 42%, var(--bg));
+  --accent-bg: color-mix(in srgb, var(--accent) 15%, transparent);
+  --accent-2: color-mix(in srgb, var(--accent) 70%, var(--text));
+  --display: "Unbounded", "Onest", system-ui, sans-serif;
+  --body: "Onest", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.55 var(--body); -webkit-font-smoothing: antialiased; overflow-x: hidden; transition: background .35s, color .35s; }
+a { color: inherit; }
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { text-wrap: balance; }
+:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; border-radius: 6px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.pix { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+
+/* кнопки */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 22px; border-radius: 14px; border: 1px solid var(--line); background: var(--s2); color: var(--text); font: 600 15px/1 var(--body); text-decoration: none; cursor: pointer; transition: transform .15s, border-color .15s, background .15s; }
+.btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.btn.play { background: linear-gradient(180deg, var(--play), color-mix(in srgb, var(--play) 82%, #e07b00)); color: #2b1d00; border-color: transparent; box-shadow: 0 8px 28px -8px var(--play), inset 0 1px 0 rgba(255,255,255,.45); }
+.btn.play:hover { transform: translateY(-3px); box-shadow: 0 14px 34px -8px var(--play), inset 0 1px 0 rgba(255,255,255,.45); }
+.btn.sm { min-height: 38px; padding: 0 16px; border-radius: 11px; font-size: 14px; }
+.btn svg { width: 20px; height: 20px; flex: none; }
+
+/* верх и герой */
+.hero { position: relative; margin-top: calc(-1 * env(safe-area-inset-top, 0px)); padding-top: calc(env(safe-area-inset-top, 0px) + 18px); padding-bottom: 72px; background:
+  radial-gradient(900px 480px at 78% 8%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%),
+  radial-gradient(600px 400px at 6% 40%, color-mix(in srgb, var(--play) 9%, transparent), transparent 70%),
+  linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 100% 56px,
+  linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 56px 100%,
+  var(--bg); background-blend-mode: normal; }
+.hero::after { content: ""; position: absolute; inset: auto 0 0; height: 140px; background: linear-gradient(transparent, var(--bg)); pointer-events: none; }
+.nav { position: relative; z-index: 2; display: flex; align-items: center; gap: 28px; padding-block: 8px 34px; }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; font: 700 20px/1 var(--display); letter-spacing: -.01em; }
+.brand svg { width: 34px; height: 34px; }
+.nav-links { display: flex; gap: 6px; margin-left: auto; }
+.nav-links a { padding: 8px 14px; border-radius: 10px; color: var(--muted); text-decoration: none; font-weight: 500; font-size: 15px; }
+.nav-links a:hover { color: var(--text); background: var(--s2); }
+.hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); gap: 48px; align-items: center; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: 999px; background: var(--accent-bg); color: var(--accent-2); font: 500 12px/1 var(--mono); letter-spacing: .04em; text-transform: uppercase; }
+.eyebrow i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: pulse 2s infinite; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 9px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+h1 { margin-top: 22px; font: 700 clamp(34px, 5.2vw, 58px)/1.06 var(--display); letter-spacing: -.03em; }
+h1 em { font-style: normal; color: var(--accent); }
+.lead { margin-top: 22px; max-width: 30em; color: var(--muted); font-size: 18px; line-height: 1.6; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+.fine { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--faint); font: 500 12px/1.4 var(--mono); }
+.fine span::before { content: "■"; margin-right: 7px; color: var(--accent); font-size: 8px; vertical-align: 2px; }
+
+/* окно лаунчера */
+.win { border: 1px solid var(--line); border-radius: 18px; background: var(--bg); overflow: hidden; box-shadow: 0 40px 80px -30px #000c, 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent), 0 0 90px -30px var(--accent); transform: perspective(1400px) rotateY(-5deg) rotateX(2deg); transition: transform .5s; }
+.win:hover { transform: none; }
+.win-bar { display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: var(--s1); border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.win-bar svg { width: 15px; height: 15px; }
+.win-body { display: grid; grid-template-columns: 74px minmax(0, 1fr); min-height: 360px; }
+.rail { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px 0; background: color-mix(in srgb, var(--bg) 70%, #000); border-right: 1px solid var(--line); }
+.rail .it { display: grid; justify-items: center; gap: 4px; width: 58px; padding: 7px 0 6px; border-radius: 11px; color: var(--faint); font-size: 10px; }
+.rail .it.on { background: var(--accent-bg); color: var(--accent-2); }
+.rail .it i { display: block; width: 20px; height: 20px; border-radius: 6px; background: currentColor; opacity: .85; }
+.rail .it:nth-child(2) i { border-radius: 50%; }
+.rail .it:nth-child(3) i { clip-path: polygon(0 20%, 100% 20%, 100% 100%, 0 100%); }
+.rail .it:nth-child(4) i { clip-path: polygon(20% 0, 80% 0, 100% 25%, 82% 40%, 82% 100%, 18% 100%, 18% 40%, 0 25%); }
+.rail .it:nth-child(5) i { border-radius: 50%; box-shadow: inset 0 0 0 3px var(--bg); }
+.rail .it:nth-child(6) i { clip-path: polygon(0 20%, 100% 20%, 100% 38%, 0 38%, 0 62%, 100% 62%, 100% 80%, 0 80%); border-radius: 0; }
+.rail .logo { width: 32px; height: 32px; margin-bottom: 6px; }
+.lib { padding: 18px 18px 20px; min-width: 0; }
+.lib-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.lib-head b { font: 700 20px/1 var(--display); letter-spacing: -.02em; }
+.lib-head span { color: var(--faint); font-size: 12px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 12px; margin-top: 16px; }
+.card { position: relative; border: 1px solid var(--line); border-radius: 14px; background: var(--s1); overflow: hidden; min-width: 0; }
+.card .art { position: relative; aspect-ratio: 16 / 10; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--p-glow) 28%, transparent), transparent 62%), linear-gradient(145deg, var(--p-bg), var(--p-bg2)); }
+.card .art .px { width: 46%; max-width: 76px; aspect-ratio: 1; filter: drop-shadow(0 0 12px var(--p-glow)); }
+.card .meta { display: grid; gap: 6px; padding: 10px 11px 12px; }
+.card .meta b { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.25; }
+.card .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.live { position: absolute; top: 8px; left: 8px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 7px; border-radius: 999px; background: #0009; color: #fff; font-size: 10px; font-weight: 600; }
+.live i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); animation: pulse 2s infinite; }
+.mini-play { position: absolute; right: 8px; bottom: 8px; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 8px; background: var(--play); color: #2b1d00; font-size: 11px; font-weight: 700; }
+.mini-play::before { content: ""; border-left: 7px solid currentColor; border-block: 4.5px solid transparent; }
+.chip { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; background: color-mix(in srgb, var(--c, var(--accent)) 16%, transparent); color: color-mix(in srgb, var(--c, var(--accent)) 78%, var(--text)); font: 500 10.5px/1 var(--mono); white-space: nowrap; }
+.chip.ver { --c: var(--muted); }
+.fabric { --c: #dbb69b; } .forge { --c: #959eef; } .neoforge { --c: #f99e5b; } .quilt { --c: #c796f9; } .vanilla { --c: #8bd37a; }
+.caption { margin-top: 12px; text-align: center; color: var(--faint); font: 500 11px/1.4 var(--mono); }
+
+/* секции */
+section { padding-block: 84px; }
+.kicker { color: var(--accent-2); font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+h2 { margin-top: 14px; font: 700 clamp(26px, 3.6vw, 40px)/1.12 var(--display); letter-spacing: -.025em; max-width: 18em; }
+.sub { margin-top: 16px; max-width: 36em; color: var(--muted); font-size: 17px; }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 56px; align-items: center; }
+.panel { border: 1px solid var(--line); border-radius: 18px; background: var(--s1); padding: 22px; min-width: 0; }
+
+/* каталог модов */
+.rows { display: grid; gap: 12px; }
+.row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--s1); transition: border-color .15s, transform .15s; }
+.row:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); transform: translateX(4px); }
+.row .ico { width: 64px; height: 64px; border-radius: 14px; padding: 9px; background: linear-gradient(145deg, var(--p-bg), var(--p-bg2)); }
+.row .ico .px { filter: drop-shadow(0 0 8px var(--p-glow)); }
+.row h3 { font: 600 16px/1.25 var(--body); }
+.row p { margin-top: 3px; color: var(--muted); font-size: 14px; line-height: 1.4; }
+.row .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.get { min-width: 126px; height: 40px; padding: 0 16px; border: 0; border-radius: 11px; background: var(--ok); color: var(--ok-ink); font: 700 14px/1 var(--body); cursor: pointer; transition: transform .15s, background .2s; }
+.get:hover { transform: translateY(-2px); }
+.get[aria-pressed="true"] { background: var(--s3); color: var(--muted); }
+.sources { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+.src { display: inline-flex; align-items: center; gap: 9px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--s1); font-weight: 600; font-size: 14px; }
+.src i { width: 10px; height: 10px; border-radius: 3px; background: var(--ok); }
+.src.cf i { background: #f16436; }
+
+/* сеть */
+.steps { margin: 28px 0 0; padding: 0; list-style: none; display: grid; gap: 14px; counter-reset: s; }
+.steps li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; align-items: start; counter-increment: s; }
+.steps li::before { content: counter(s); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--accent-bg); color: var(--accent-2); font: 700 14px/1 var(--mono); }
+.steps b { display: block; font-weight: 600; }
+.steps span { color: var(--muted); font-size: 15px; }
+.room-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.room-top b { font: 700 18px/1 var(--display); letter-spacing: -.02em; }
+.code { margin-top: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 12px 16px; border: 1px dashed var(--line); border-radius: 14px; background: var(--bg); font: 500 22px/1 var(--mono); letter-spacing: .06em; overflow-wrap: anywhere; }
+.code.on { border-style: solid; border-color: var(--accent); color: var(--accent-2); }
+.code small { font: 500 12px/1.3 var(--body); letter-spacing: 0; color: var(--faint); }
+.peers { margin-top: 16px; display: grid; gap: 10px; }
+.peer { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--s2); animation: pop .35s both; }
+@keyframes pop { from { opacity: 0; transform: translateY(8px); } }
+.peer .px { width: 36px; height: 36px; flex: none; padding: 5px; border-radius: 10px; background: linear-gradient(145deg, var(--p-bg), var(--p-bg2)); }
+.peer b { display: block; font-size: 14px; font-weight: 600; }
+.peer span { color: var(--muted); font-size: 13px; }
+.peer em { margin-left: auto; font: 500 11px/1 var(--mono); font-style: normal; color: var(--ok); }
+.hint { margin-top: 12px; color: var(--faint); font-size: 12px; }
+
+/* темы */
+.themes-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 30px; }
+.theme { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--s1); color: var(--text); text-align: left; font: 600 14px/1 var(--body); cursor: pointer; transition: border-color .15s, transform .15s; }
+.theme:hover { transform: translateY(-2px); }
+.theme[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.theme .sw { display: flex; height: 36px; border-radius: 8px; overflow: hidden; border: 1px solid #fff2; }
+.theme .sw i { flex: 1; }
+.theme .sw i:first-child { flex: 2; }
+.tgl { display: inline-flex; align-items: center; gap: 12px; margin-top: 22px; padding: 8px 16px 8px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--s1); color: var(--text); font: 500 14px/1 var(--body); cursor: pointer; }
+.tgl .knob { position: relative; width: 42px; height: 24px; border-radius: 999px; background: var(--s3); transition: background .2s; }
+.tgl .knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--text); transition: transform .2s; }
+.tgl[aria-pressed="true"] .knob { background: var(--accent); }
+.tgl[aria-pressed="true"] .knob::after { transform: translateX(18px); background: var(--on-accent); }
+.events { margin-top: 16px; color: var(--faint); font-size: 14px; }
+#snow { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+
+/* ещё внутри */
+.grid { margin-top: 36px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.feat { display: grid; align-content: start; gap: 12px; padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--s1); transition: border-color .15s, transform .15s; }
+.feat:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); transform: translateY(-3px); }
+.feat .px { width: 44px; height: 44px; padding: 6px; border-radius: 12px; background: linear-gradient(145deg, var(--p-bg), var(--p-bg2)); }
+.feat h3 { font: 600 17px/1.25 var(--body); }
+.feat p { color: var(--muted); font-size: 15px; line-height: 1.5; }
+
+/* скачать */
+.dl { position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: center; padding: 44px; border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line)); border-radius: 26px; background: radial-gradient(520px 260px at 90% 0%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%), var(--s1); }
+.dl h2 { margin: 0; }
+.dl .sub { margin-top: 12px; }
+.dl .cta { margin-top: 0; flex-direction: column; align-items: stretch; min-width: 240px; }
+
+/* вопросы */
+.faq { margin-top: 32px; display: grid; gap: 10px; max-width: 800px; }
+details { border: 1px solid var(--line); border-radius: 14px; background: var(--s1); }
+summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; font-weight: 600; cursor: pointer; list-style: none; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--accent-bg); color: var(--accent-2); font: 500 18px/1 var(--mono); }
+details[open] summary::after { content: "−"; }
+details p { padding: 0 20px 18px; color: var(--muted); max-width: 44em; }
+code { padding: 2px 6px; border-radius: 6px; background: var(--s3); font: 500 .88em/1 var(--mono); }
+
+footer { padding-block: 44px 56px; border-top: 1px solid var(--line); color: var(--faint); font-size: 13px; }
+footer .row2 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 32px; }
+footer .links { display: flex; gap: 20px; }
+footer a { color: var(--muted); }
+footer p { margin-top: 18px; max-width: 46em; line-height: 1.55; }
+
+@media (max-width: 920px) {
+  .hero-grid, .split { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .win { transform: none; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dl { grid-template-columns: minmax(0, 1fr); padding: 30px; }
+  .dl .cta { flex-direction: row; flex-wrap: wrap; }
+}
+@media (max-width: 600px) {
+  section { padding-block: 60px; }
+  .nav-links a:not(:last-child) { display: none; }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .win-body { grid-template-columns: 52px minmax(0, 1fr); }
+  .rail .it { width: 44px; font-size: 0; }
+  .lib { padding: 14px; }
+  .row { grid-template-columns: 52px minmax(0, 1fr); }
+  .row .ico { width: 52px; height: 52px; padding: 7px; }
+  .row .get { grid-column: 1 / -1; width: 100%; }
+  .code { font-size: 18px; }
+  .lead { font-size: 17px; }
+  .btn { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* скачивание и обновления */
+.dlstat { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:14px; color:var(--muted); font-size:14px; }
+.dlstat b { color:var(--text); font-weight:600; }
+.rel { background:var(--s1); border:1px solid var(--line); border-radius:16px; padding:18px 20px; margin-top:14px; }
+.rel:first-child { margin-top:22px; border-color:var(--accent); }
+.rel-h { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; }
+.rel-h h3 { font:600 18px var(--display); }
+.rel-h time, .rel-h span { color:var(--muted); font-size:13px; }
+.rel ul { margin:10px 0 0; padding-left:20px; color:var(--muted); }
+.rel li { margin:3px 0; }
+.rel p { margin-top:8px; color:var(--muted); }
+.rel-a { display:inline-block; margin-top:12px; color:var(--accent-2); font-size:14px; }
+</style>
+</head>
+<body>
+
+<canvas id="snow" aria-hidden="true"></canvas>
+
+<header class="hero">
+  <div class="wrap">
+    <nav class="nav" aria-label="Основная">
+      <a class="brand" href="#top" id="top">
+        <svg viewBox="2.5 1.5 27 29" aria-hidden="true"><path d="M16 3l12 7v12l-12 7L4 22V10z" fill="var(--accent)"/><path d="M16 3l12 7-12 7L4 10z" fill="var(--accent-2)"/><path d="M16 17v12L4 22V10z" fill="color-mix(in srgb, var(--accent) 60%, #000)"/></svg>
+        ATL Launcher
+      </a>
+      <div class="nav-links">
+        <a href="#mods">Моды</a>
+        <a href="#net">Сеть</a>
+        <a href="#themes">Темы</a>
+        <a href="#updates">Обновления</a>
+        <a href="#faq">Вопросы</a>
+        <a href="https://github.com/Kingo0off/ATL Launcher" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </nav>
+
+    <div class="hero-grid">
+      <div>
+        <span class="eyebrow"><i></i>Лаунчер для Minecraft</span>
+        <h1>Играй с друзьями, а не с <em>настройками</em></h1>
+        <p class="lead">ATL Launcher сам скачивает Java, ставит Fabric, Quilt, Forge и NeoForge, ищет моды и открывает комнату для игры по коду. Один файл, без установщика.</p>
+        <div class="cta">
+          <a class="btn play" href="https://github.com/Kingo0off/ATL Launcher/releases/latest/download/ATL-Launcher.exe" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 20h16"/></svg>
+            Скачать для Windows
+          </a>
+          <a class="btn" href="https://github.com/Kingo0off/ATL Launcher/releases" target="_blank" rel="noopener">Все версии</a>
+        </div>
+        <div class="dlstat" id="dl-stat" hidden></div>
+        <div class="fine"><span>Windows 10 и 11</span><span>Бесплатно</span><span>Код на GitHub</span></div>
+      </div>
+
+      <div>
+        <div class="win" aria-label="Макет окна лаунчера">
+          <div class="win-bar">
+            <svg viewBox="2.5 1.5 27 29" aria-hidden="true"><path d="M16 3l12 7v12l-12 7L4 22V10z" fill="var(--accent)"/><path d="M16 3l12 7-12 7L4 10z" fill="var(--accent-2)"/></svg>
+            ATL Launcher
+          </div>
+          <div class="win-body">
+            <div class="rail" aria-hidden="true">
+              <svg class="logo" viewBox="2.5 1.5 27 29"><path d="M16 3l12 7v12l-12 7L4 22V10z" fill="var(--accent)"/><path d="M16 3l12 7-12 7L4 10z" fill="var(--accent-2)"/><path d="M16 17v12L4 22V10z" fill="color-mix(in srgb, var(--accent) 60%, #000)"/></svg>
+              <div class="it on"><i></i>Библиотека</div>
+              <div class="it"><i></i>Обзор</div>
+              <div class="it"><i></i>Снимки</div>
+              <div class="it"><i></i>Скины</div>
+              <div class="it"><i></i>Сеть</div>
+              <div class="it"><i></i>Настройки</div>
+            </div>
+            <div class="lib">
+              <div class="lib-head"><b>Библиотека</b><span>5 сборок</span></div>
+              <div class="cards" id="cards"></div>
+            </div>
+          </div>
+        </div>
+        <p class="caption">Макет интерфейса. Значки сборок рисуются так же, как в лаунчере</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+<section id="mods">
+  <div class="wrap split">
+    <div>
+      <span class="kicker">Моды</span>
+      <h2>Каталог Modrinth и CurseForge прямо в лаунчере</h2>
+      <p class="sub">Ищи мод, выбирай сборку и нажимай «Установить». ATL Launcher подберёт файл под версию игры и загрузчик этой сборки.</p>
+      <div class="sources"><span class="src"><i></i>Modrinth</span><span class="src cf"><i></i>CurseForge</span></div>
+      <div class="sources" style="margin-top:12px"><span class="chip fabric">Fabric</span><span class="chip quilt">Quilt</span><span class="chip forge">Forge</span><span class="chip neoforge">NeoForge</span><span class="chip vanilla">Vanilla</span></div>
+    </div>
+    <div class="rows" id="mods-list" aria-label="Пример каталога"></div>
+  </div>
+</section>
+
+<section id="net" style="padding-top:20px">
+  <div class="wrap split">
+    <div>
+      <span class="kicker">Сеть</span>
+      <h2>Комната по коду вместо Radmin и Hamachi</h2>
+      <p class="sub">Встроенный туннель для Minecraft. Не нужны драйверы, админ-права и белый IP.</p>
+      <ol class="steps">
+        <li><div><b>Хост создаёт комнату</b><span>Открывает мир в одиночной игре и нажимает «Создать комнату». Порт мира ATL Launcher находит сам.</span></div></li>
+        <li><div><b>Друг вводит код</b><span>Код приходит хосту в лаунчер, дальше его можно отправить в любой мессенджер.</span></div></li>
+        <li><div><b>Мир появляется в «Сетевой игре»</b><span>У друга достаточно нажать на него в списке серверов Minecraft.</span></div></li>
+      </ol>
+    </div>
+    <div class="panel" aria-label="Демонстрация комнаты">
+      <div class="room-top"><b>Комната</b><button class="btn sm" id="room-btn" type="button">Создать комнату</button></div>
+      <div class="code" id="room-code" aria-live="polite"><span>Код появится здесь</span></div>
+      <div class="peers" id="peers"></div>
+      <p class="hint">Это демонстрация, код вымышленный. В лаунчере комнату выдаёт настоящий туннель.</p>
+    </div>
+  </div>
+</section>
+
+<section id="themes" style="padding-top:20px">
+  <div class="wrap">
+    <span class="kicker">Внешний вид</span>
+    <h2>Семь тем и праздничные украшения</h2>
+    <p class="sub">Нажми на тему, и страница перекрасится так же, как лаунчер. Свои цвета тоже можно задать в настройках.</p>
+    <div class="themes-box" id="themes-box" role="group" aria-label="Темы"></div>
+    <button class="tgl" id="snow-btn" type="button" aria-pressed="false"><span class="knob"></span>Снег</button>
+    <p class="events">В лаунчере украшения включаются по датам: Новый год с гирляндой и снегом (15 декабря – 10 января), Хэллоуин с паутиной и тыквами (20 октября – 2 ноября), День влюблённых с сердечками (10–15 февраля).</p>
+  </div>
+</section>
+
+<section id="more" style="padding-top:20px">
+  <div class="wrap">
+    <span class="kicker">Ещё внутри</span>
+    <h2>Всё, что нужно компании друзей</h2>
+    <div class="grid" id="feat"></div>
+  </div>
+</section>
+
+<section style="padding-top:20px">
+  <div class="wrap">
+    <div class="dl">
+      <div>
+        <h2>Скачай ATL Launcher и позови друзей</h2>
+        <p class="sub">Один файл <code>ATL-Launcher.exe</code>. Дальше лаунчер обновляется сам.</p>
+      </div>
+      <div class="cta">
+        <a class="btn play" href="https://github.com/Kingo0off/ATL Launcher/releases/latest/download/ATL-Launcher.exe" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 20h16"/></svg>
+          Скачать для Windows
+        </a>
+        <a class="btn" href="https://github.com/Kingo0off/ATL Launcher" target="_blank" rel="noopener">Исходный код</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="updates" style="padding-top:20px">
+  <div class="wrap">
+    <span class="kicker">Обновления</span>
+    <h2>Что нового</h2>
+    <div id="rel-list"><p class="sub" id="rel-empty">Загружаю список версий…</p></div>
+    <a class="rel-a" href="https://github.com/Kingo0off/Voxel/releases" target="_blank" rel="noopener">Все версии на GitHub</a>
+  </div>
+</section>
+
+<section id="faq" style="padding-top:20px">
+  <div class="wrap">
+    <span class="kicker">Вопросы</span>
+    <h2>Коротко о важном</h2>
+    <div class="faq">
+      <details><summary>Windows пишет «Система Windows защитила ваш компьютер»</summary><p>Файл пока не подписан сертификатом разработчика, поэтому SmartScreen предупреждает о нём. Нажми «Подробнее», затем «Выполнить в любом случае». Исходный код открыт, его можно прочитать на GitHub.</p></details>
+      <details><summary>Нужно ли ставить Java?</summary><p>Нет. ATL Launcher скачивает подходящую Java для выбранной версии игры. Первый запуск сборки идёт дольше остальных, потому что качаются Java и файлы игры.</p></details>
+      <details><summary>Нужна ли лицензия Minecraft?</summary><p>Для игры на лицензионных серверах нужна Minecraft: Java Edition. Поддерживаются аккаунты Microsoft и Ely.by. Вход через Microsoft требует одобрения приложения у Mojang, поэтому на практике он заработает не сразу.</p></details>
+      <details><summary>Где хранятся мои сборки и миры?</summary><p>В папке <code>%APPDATA%\ATL Launcher</code>. Открыть её можно в «Настройки → Данные».</p></details>
+      <details><summary>Как обновляться?</summary><p>В «Настройки → Обновления» нажми «Проверить», затем «Обновить и перезапустить». Рядом с «Настройками» горит точка, когда вышла новая версия.</p></details>
+      <details><summary>Друг не может подключиться к комнате</summary><p>Проверь, что у обоих стоит последняя версия лаунчера. Если ошибка осталась, пришли её текст дословно, например в раздел Issues на GitHub.</p></details>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="row2">
+      <a class="brand" href="#top" style="font-size:18px"><svg viewBox="2.5 1.5 27 29" aria-hidden="true" style="width:28px;height:28px"><path d="M16 3l12 7v12l-12 7L4 22V10z" fill="var(--accent)"/><path d="M16 3l12 7-12 7L4 10z" fill="var(--accent-2)"/><path d="M16 17v12L4 22V10z" fill="color-mix(in srgb, var(--accent) 60%, #000)"/></svg>ATL Launcher</a>
+      <div class="links"><a href="https://github.com/Kingo0off/ATL Launcher" target="_blank" rel="noopener">GitHub</a><a href="https://github.com/Kingo0off/ATL Launcher/releases" target="_blank" rel="noopener">Релизы</a></div>
+    </div>
+    <p>ATL Launcher не связан с Mojang, Microsoft, Modrinth и CurseForge. Minecraft является товарным знаком Mojang AB. Лаунчер сделан компанией друзей для игры вместе.</p>
+  </div>
+</footer>
+
+<script>
+/* значки сборок: тот же генератор, что в лаунчере */
+const PALETTES = [
+  ['#2b2250', '#1a1636', '#b79cff', '#7c5cf0', '#efe8ff'], ['#10343a', '#0b2226', '#5fe0c4', '#2aa58f', '#d6fff5'],
+  ['#40230f', '#26140a', '#ffb35c', '#e0792b', '#fff0d9'], ['#14301c', '#0c1d11', '#7be08a', '#3aa653', '#e3ffe5'],
+  ['#3a1523', '#240c15', '#ff7b9c', '#d83d6a', '#ffe3ea'], ['#14213f', '#0c1428', '#6fa8ff', '#3a6fe0', '#e3eeff'],
+  ['#3a3414', '#242008', '#ffd95c', '#d9a81f', '#fff6cf'], ['#1f2a33', '#12191f', '#9fb8c9', '#62808f', '#e8f2f8'],
+  ['#2f1740', '#1c0d27', '#e48bff', '#b24ad8', '#fbe6ff'], ['#392010', '#22120a', '#d4a373', '#a0693a', '#f6e6d4'],
+];
+function rng(seed) {
+  let h = 2166136261;
+  for (const ch of String(seed)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return () => { h += 0x6D2B79F5; let t = Math.imul(h ^ (h >>> 15), 1 | h); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+const pal = seed => PALETTES[Math.floor(rng('p' + seed)() * PALETTES.length)];
+const palVars = p => `--p-bg:${p[0]};--p-bg2:${p[1]};--p-glow:${p[2]}`;
+function art(seed) {
+  const r = rng(seed), p = pal(seed);
+  let cells = '';
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 4; x++) {
+    const edge = x === 0 || y === 0 || y === 7;
+    if (r() < (edge ? 0.58 : 0.2)) continue;
+    const v = r(), col = v < 0.5 ? p[2] : v < 0.82 ? p[3] : p[4];
+    cells += `<rect x="${x}" y="${y}" width="1" height="1" fill="${col}"/><rect x="${7 - x}" y="${y}" width="1" height="1" fill="${col}"/>`;
+  }
+  return `<svg class="pix" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">${cells}</svg>`;
+}
+const $ = s => document.querySelector(s);
+const L = { fabric: 'Fabric', quilt: 'Quilt', forge: 'Forge', neoforge: 'NeoForge', vanilla: 'Vanilla' };
+const chip = (k, v) => `<span class="chip ${k}">${v}</span>`;
+
+/* библиотека в макете окна */
+const builds = [
+  { n: 'Выживание с друзьями', seed: 'v3', l: 'fabric', v: '1.21.1', live: true },
+  { n: 'Техно-сборка', seed: 'v14', l: 'neoforge', v: '1.21.1', play: true },
+  { n: 'Классика', seed: 'v22', l: 'vanilla', v: '1.20.4' },
+  { n: 'Шейдеры', seed: 'v9', l: 'quilt', v: '1.20.1' },
+  { n: 'Старые добрые', seed: 'v37', l: 'forge', v: '1.12.2' },
+];
+$('#cards').innerHTML = builds.map(b => `<div class="card" style="${palVars(pal(b.seed))}"><div class="art">${b.live ? '<span class="live"><i></i>Запущена</span>' : ''}<div class="px">${art(b.seed)}</div>${b.play ? '<span class="mini-play">Играть</span>' : ''}</div><div class="meta"><b>${b.n}</b><div class="chips">${chip(b.l, L[b.l])}${chip('ver', b.v)}</div></div></div>`).join('');
+
+/* каталог модов: примеры, кнопка меняет состояние */
+const mods = [
+  { n: 'Sodium', d: 'Ускоряет отрисовку мира и поднимает FPS.', seed: 'v1', l: ['fabric', 'quilt'] },
+  { n: 'Iris Shaders', d: 'Подключает шейдеры без потери скорости.', seed: 'v28', l: ['fabric', 'quilt'] },
+  { n: 'Mod Menu', d: 'Список установленных модов прямо в игре.', seed: 'v45', l: ['fabric'] },
+];
+$('#mods-list').innerHTML = mods.map(m => `<div class="row" style="${palVars(pal(m.seed))}"><div class="ico"><div class="px">${art(m.seed)}</div></div><div><h3>${m.n}</h3><p>${m.d}</p><div class="chips">${m.l.map(k => chip(k, L[k])).join('')}</div></div><button class="get" type="button" aria-pressed="false">Установить</button></div>`).join('');
+document.querySelectorAll('.get').forEach(b => b.addEventListener('click', () => {
+  const on = b.getAttribute('aria-pressed') !== 'true';
+  b.setAttribute('aria-pressed', on); b.textContent = on ? 'Установлено' : 'Установить';
+}));
+
+/* демонстрация комнаты */
+let roomTimer;
+$('#room-btn').addEventListener('click', () => {
+  const abc = 'abcdefghjkmnpqrstuvwxyz23456789';
+  const part = () => Array.from({ length: 4 }, () => abc[Math.floor(Math.random() * abc.length)]).join('');
+  const box = $('#room-code'), peers = $('#peers');
+  clearTimeout(roomTimer); peers.innerHTML = '';
+  box.classList.add('on'); box.innerHTML = `<span>${part()}-${part()}</span><small>демо</small>`;
+  const add = (name, what, seed, tag) => peers.insertAdjacentHTML('beforeend', `<div class="peer" style="${palVars(pal(seed))}"><div class="px">${art(seed)}</div><div><b>${name}</b><span>${what}</span></div><em>${tag}</em></div>`);
+  add('Ты', 'хост, мир открыт', 'v52', 'ХОСТ');
+  roomTimer = setTimeout(() => { add('Друг', 'вошёл по коду, мир в «Сетевой игре»', 'v18', 'В СЕТИ'); }, 1100);
+});
+
+/* прочие возможности */
+const feats = [
+  ['v5', 'Библиотека сборок', 'У каждой сборки своя версия игры, загрузчик, моды, миры и значок. Копируй, настраивай и запускай по кнопке.'],
+  ['v33', 'Импорт сборок', 'Забирай сборки из Prism и других лаунчеров, а также из файлов .mrpack.'],
+  ['v12', 'Скины', 'Смена скина и плаща для Microsoft-аккаунтов, просмотр в одном месте.'],
+  ['v40', 'Снимки экрана', 'Все скриншоты всех сборок в одной ленте, с фильтром по сборке.'],
+  ['v26', 'Миры', 'Список миров каждой сборки, открытие папок и быстрые копии.'],
+  ['v57', 'Автообновление', 'Лаунчер сам находит новую версию, проверяет файл и перезапускается обновлённым.'],
+];
+$('#feat').innerHTML = feats.map(f => `<div class="feat" style="${palVars(pal(f[0]))}"><div class="px">${art(f[0])}</div><h3>${f[1]}</h3><p>${f[2]}</p></div>`).join('');
+
+/* темы: меняются четыре цвета, остальное считается из них */
+const THEMES = {
+  slate: ['Сланец', '#9b7cff', '#ffcf5a', '#0f1117', '#e9eaf2', '#130b33'],
+  ocean: ['Океан', '#38bdf8', '#fbbf24', '#0b141c', '#e6f0f7', '#04202e'],
+  forest: ['Лес', '#4ade80', '#f59e0b', '#0e1511', '#e5f1e8', '#062613'],
+  sunset: ['Закат', '#fb7185', '#fdba74', '#1a1014', '#f6e8ec', '#3a0714'],
+  sakura: ['Сакура', '#f472b6', '#fde047', '#171018', '#f6e8f1', '#3a0a23'],
+  graphite: ['Графит', '#d4d4d8', '#facc15', '#121212', '#ececec', '#18181b'],
+  light: ['Светлая', '#6d4aff', '#f59e0b', '#f4f5fa', '#1b1e2b', '#ffffff'],
+};
+function setTheme(id) {
+  const t = THEMES[id], s = document.documentElement.style;
+  s.setProperty('--accent', t[1]); s.setProperty('--play', t[2]); s.setProperty('--bg', t[3]); s.setProperty('--text', t[4]); s.setProperty('--on-accent', t[5]);
+  s.setProperty('color-scheme', id === 'light' ? 'light' : 'dark');
+  document.querySelectorAll('.theme').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === id));
+}
+$('#themes-box').innerHTML = Object.entries(THEMES).map(([id, t]) => `<button class="theme" type="button" data-id="${id}" aria-pressed="${id === 'slate'}"><span class="sw"><i style="background:${t[3]}"></i><i style="background:${t[1]}"></i><i style="background:${t[2]}"></i></span>${t[0]}</button>`).join('');
+document.querySelectorAll('.theme').forEach(b => b.addEventListener('click', () => setTheme(b.dataset.id)));
+
+/* снег: сам включается с 15 декабря по 10 января, как в лаунчере */
+const cv = $('#snow'), cx = cv.getContext('2d'), btn = $('#snow-btn');
+let flakes = [], raf = 0;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function fit() { cv.width = innerWidth; cv.height = innerHeight; }
+function frame() {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  cx.fillStyle = 'rgba(255,255,255,.85)';
+  for (const f of flakes) {
+    f.y += f.v; f.x += Math.sin((f.y + f.p) / 40) * .4;
+    if (f.y > cv.height + 4) { f.y = -4; f.x = Math.random() * cv.width; }
+    cx.fillRect(f.x, f.y, f.s, f.s);
+  }
+  raf = requestAnimationFrame(frame);
+}
+function snow(on) {
+  btn.setAttribute('aria-pressed', on);
+  cancelAnimationFrame(raf); cx.clearRect(0, 0, cv.width, cv.height);
+  if (!on || reduced) return;
+  fit(); flakes = Array.from({ length: 90 }, () => ({ x: Math.random() * cv.width, y: Math.random() * cv.height, s: 2 + Math.floor(Math.random() * 3), v: .5 + Math.random() * 1.2, p: Math.random() * 100 }));
+  frame();
+}
+addEventListener('resize', () => { if (btn.getAttribute('aria-pressed') === 'true') fit(); });
+btn.addEventListener('click', () => snow(btn.getAttribute('aria-pressed') !== 'true'));
+const d = new Date(), md = (d.getMonth() + 1) * 100 + d.getDate();
+if (md >= 1215 || md <= 110) snow(true);
+</script>
+
+<script>
+/* Версия, счётчик скачиваний и список обновлений берутся из релизов GitHub. Сайт править при выходе новой версии не нужно. */
+(function () {
+  const REPO = 'Kingo0off/Voxel';
+  const CACHE = 'atl-rel-v1';
+  const $ = id => document.getElementById(id);
+  const fmt = n => n.toLocaleString('ru-RU');
+  function dateRu(iso) { try { return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { return ''; } }
+  function clean(body) {
+    return (body || '').split('\n').map(l => l.trim()).filter(l => l && !/^(Co-Authored-By|Claude-Session):/i.test(l) && !/Generated with \[Claude Code\]/i.test(l));
+  }
+  function relNode(r, first) {
+    const art = document.createElement('article'); art.className = 'rel';
+    const h = document.createElement('div'); h.className = 'rel-h';
+    const t = document.createElement('h3'); t.textContent = (r.name || r.tag_name).replace(/^Voxel/, 'ATL Launcher'); h.appendChild(t);
+    const d = document.createElement('time'); d.textContent = dateRu(r.published_at); h.appendChild(d);
+    if (first) { const n = document.createElement('span'); n.textContent = 'последняя версия'; h.appendChild(n); }
+    art.appendChild(h);
+    const lines = clean(r.body);
+    const title = lines.filter(l => !l.startsWith('- '))[0];
+    const items = lines.filter(l => l.startsWith('- ')).map(l => l.slice(2));
+    if (title) { const p = document.createElement('p'); p.textContent = title; art.appendChild(p); }
+    if (items.length) { const ul = document.createElement('ul'); items.forEach(x => { const li = document.createElement('li'); li.textContent = x; ul.appendChild(li); }); art.appendChild(ul); }
+    return art;
+  }
+  function draw(list) {
+    const rels = list.filter(r => !r.draft);
+    let total = 0; rels.forEach(r => (r.assets || []).forEach(a => { total += a.download_count || 0; }));
+    const last = rels[0];
+    if (last) {
+      const st = $('dl-stat'); st.hidden = false; st.textContent = '';
+      const mk = (a, b) => { const s = document.createElement('span'); s.append(a + ' '); const bb = document.createElement('b'); bb.textContent = b; s.appendChild(bb); st.appendChild(s); };
+      mk('Версия', last.tag_name.replace(/^v/, ''));
+      mk('Вышла', dateRu(last.published_at));
+      mk('Скачиваний:', fmt(total));
+    }
+    const box = $('rel-list'); box.textContent = '';
+    const shown = rels.filter(r => clean(r.body).length).slice(0, 8);
+    shown.forEach((r, i) => box.appendChild(relNode(r, i === 0)));
+    if (!shown.length) { const p = document.createElement('p'); p.className = 'sub'; p.textContent = 'Пока нет записей об обновлениях.'; box.appendChild(p); }
+  }
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(CACHE) || 'null'); } catch (e) {}
+  if (cached && cached.list) draw(cached.list);
+  fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=30', { headers: { Accept: 'application/vnd.github+json' } })
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(list => { draw(list); try { localStorage.setItem(CACHE, JSON.stringify({ list })); } catch (e) {} })
+    .catch(() => { if (!cached) { const e = $('rel-empty'); if (e) e.textContent = 'Не удалось загрузить список версий. Они всегда есть на GitHub.'; } });
+})();
+</script>
+</body>
+</html>
