@@ -783,6 +783,35 @@ const BR_TAGS = {
   shader: [['cartoon', 'Мультяшные'], ['fantasy', 'Фэнтези'], ['realistic', 'Реалистичные'], ['semi-realistic', 'Полуреалистичные'], ['vanilla-like', 'Как ваниль'], ['cursed', 'Проклятое']],
   modpack: [['adventure', 'Приключения'], ['challenging', 'Сложные'], ['combat', 'Бой'], ['kitchen-sink', 'Всё и сразу'], ['lightweight', 'Лёгкие'], ['magic', 'Магия'], ['multiplayer', 'Мультиплеер'], ['optimization', 'Оптимизация'], ['quests', 'Квесты'], ['technology', 'Технологии']],
 };
+// Только тематические категории CurseForge: дополнения к отдельным модам не показываем.
+const CF_TAGS = {
+  mod: [
+    ['Adventure and RPG', 'Приключения'], ['Performance', 'Оптимизация'], ['Technology', 'Технологии'],
+    ['Magic', 'Магия'], ['World Gen', 'Генерация мира'], ['Mobs', 'Мобы'], ['Cosmetic', 'Декор'],
+    ['Armor, Tools, and Weapons', 'Снаряжение'], ['Food', 'Еда'], ['Storage', 'Хранение'],
+    ['Player Transport', 'Транспорт'], ['Utility & QoL', 'Утилиты'], ['API and Library', 'Библиотеки'],
+    ['Server Utility', 'Для серверов'], ['Redstone', 'Редстоун'], ['Map and Information', 'Карты и информация'],
+    ['Farming', 'Фермерство'], ['Structures', 'Структуры'], ['Biomes', 'Биомы']
+  ],
+  resourcepack: [
+    ['Mod Support', 'Для модов'], ['Photo Realistic', 'Реализм'], ['Traditional', 'Как ваниль'],
+    ['Animated', 'Анимированные'], ['Medieval', 'Средневековье'], ['Modern', 'Современные'],
+    ['Steampunk', 'Стимпанк'], ['Font Packs', 'Шрифты'], ['Data Packs', 'Датапаки'], ['Miscellaneous', 'Разное']
+  ],
+  shader: [['Fantasy', 'Фэнтези'], ['Realistic', 'Реалистичные'], ['Vanilla', 'Как ваниль']],
+  modpack: [
+    ['Adventure and RPG', 'Приключения'], ['Expert', 'Сложные'], ['Combat / PvP', 'Бой'],
+    ['Small / Light', 'Лёгкие'], ['Magic', 'Магия'], ['Multiplayer', 'Мультиплеер'],
+    ['Quests', 'Квесты'], ['Tech', 'Технологии'], ['Exploration', 'Исследования'], ['Mini Game', 'Мини-игры']
+  ]
+};
+function cfTagList(type, categories) {
+  const byName = new Map(categories.map(c => [String(c.name).trim().toLowerCase(), String(c.id)]));
+  return (CF_TAGS[type] || []).flatMap(([name, label]) => {
+    const id = byName.get(name.toLowerCase());
+    return id ? [[id, label]] : [];
+  });
+}
 const LIMITS = [5, 10, 15, 20, 50, 100];
 function drawLimit(open) {
   const B = S.br, box = $('#br-lim'); if (!B || !box) return;
@@ -1721,7 +1750,7 @@ const A = {
     if (B.tagsOpen && B.src === 'curseforge' && !B.cfTags?.[type]) {
       try {
         const d = await api('curseforge.categories', { type });
-        B.cfTags ||= {}; B.cfTags[type] = d.categories.map(c => [String(c.id), c.name]);
+        B.cfTags ||= {}; B.cfTags[type] = cfTagList(type, d.categories);
         if (!B.cfTags[type].length) toast('Категории CurseForge не найдены', 'info');
       } catch (e) { B.tagsOpen = false; toast(e.message, 'error'); }
     }
