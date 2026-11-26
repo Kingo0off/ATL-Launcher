@@ -600,10 +600,34 @@ function drawMods() {
       : m.icon_url ? `<img src="${esc(m.icon_url)}" alt="" loading="lazy" data-seed="${esc(m.name)}">` : art(m.name);
     return `<div class="row ${m.enabled ? '' : 'off'}"><div class="row-ico">${icon}</div>
       <div class="row-main"><b>${esc(m.name)}${m.version ? `<span class="ver">${esc(m.version)}</span>` : ''}${upd.has(m.file) ? '<span class="upd">есть обновление</span>' : ''}</b><small>${esc(m.file)}${m.description ? ' — ' + esc(m.description) : ''}</small></div>
+      <button type="button" class="btn sm" data-act="mod-description" data-file="${esc(m.file)}">Описание</button>
       ${upd.has(m.file) ? `<button class="btn sm play" data-act="mod-update" data-file="${esc(m.file)}">Обновить</button>` : ''}
       ${M.local ? `<label class="sw" title="${m.enabled ? 'Выключить' : 'Включить'}"><input type="checkbox" data-act="mod-toggle" data-file="${esc(m.file)}" ${m.enabled ? 'checked' : ''}><i></i></label>
       <button class="btn ghost sq" data-act="mod-delete" data-file="${esc(m.file)}" title="Удалить">${ic('trash')}</button>` : ''}</div>`;
   }).join('');
+}
+
+async function showInstalledModDescription(m) {
+  const local = m.description ? `<div class="md"><p style="white-space:pre-wrap">${esc(m.description)}</p></div>` : '<p class="hint">В файле мода нет описания.</p>';
+  const id = String(m.project_id || '');
+  const source = id.startsWith('cf:') ? 'curseforge' : 'modrinth';
+  const known = source === 'curseforge' ? /^cf:\d+$/.test(id) : /^[a-zA-Z0-9_-]+$/.test(id);
+  const dialog = modal({
+    title: m.name || m.file, wide: true,
+    body: `<div id="installed-mod-description">${known ? '<p class="hint"><span class="spin"></span> Загружаю описание…</p>' : local}</div>`
+      + (!known ? '<p class="hint">Полная страница каталога недоступна: источник этого файла неизвестен.</p>' : ''),
+    foot: '<button class="btn" data-act="modal-close">Закрыть</button>'
+  });
+  if (!known) return;
+  try {
+    const p = await api(source + '.project', { id });
+    if (!dialog.isConnected) return;
+    const content = p.body_html ? htmlSafe(p.body_html) : mdHtml(p.body);
+    $('#installed-mod-description', dialog).innerHTML = content ? `<div class="md">${content}</div>` : local;
+  } catch (e) {
+    if (!dialog.isConnected) return;
+    $('#installed-mod-description', dialog).innerHTML = `<p class="hint">Не удалось загрузить описание из каталога: ${esc(e.message)}</p>` + local;
+  }
 }
 
 /* ---- миры ---- */
@@ -1719,6 +1743,7 @@ const A = {
   'ms-code': () => msLogin(true),
   'ms-cancel': () => { api('accounts.ms_cancel').catch(() => { }); closeModal(); },
   /* моды */
+  'mod-description': el => { const m = S.mods?.mods.find(x => x.file === el.dataset.file); if (m) showInstalledModDescription(m); },
   'mods-add': () => { const f = $('#file-mod'); f.onchange = () => uploadFiles([...f.files], 'mods'); f.click(); },
   'mod-toggle': async el => { try { await api('mods.toggle', { key: S.mods.key, file: el.dataset.file }); S.mods = { ...(await api('mods.list', { key: S.mods.key })), key: S.mods.key, local: true }; } catch (e) { toast(e.message, 'error'); } drawMods(); },
   'mod-delete': async el => {
