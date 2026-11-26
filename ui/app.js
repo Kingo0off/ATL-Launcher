@@ -575,10 +575,10 @@ async function tabMods(it, el) {
   S.mods = { ...d, key: it.key, local: it.kind === 'local' };
   S.modq = '';
   el.innerHTML = `
-    <div class="log-bar"><div class="search" style="flex:1;min-width:200px">${ic('search', 16)}<input type="search" id="mod-q" placeholder="Фильтр по названию" autocomplete="off"></div>
+    <div id="br-list"><div class="log-bar"><div class="search" style="flex:1;min-width:200px">${ic('search', 16)}<input type="search" id="mod-q" placeholder="Фильтр по названию" autocomplete="off"></div>
       ${d.readonly ? '' : `<button class="btn" data-act="mods-check">${ic('refresh')} Проверить обновления</button><span id="upd-all"></span>
         <button class="btn primary" data-act="mods-add">${ic('plus')} Добавить .jar</button><input type="file" id="file-mod" accept=".jar" multiple hidden>`}</div>
-    <div class="list" id="modlist"></div>`;
+    <div class="list" id="modlist"></div></div><div id="br-detail" hidden></div>`;
   drawMods();
 }
 function drawMods() {
@@ -598,36 +598,12 @@ function drawMods() {
   box.innerHTML = rows.map(m => {
     const icon = m.icon ? `<img src="api/modicon?key=${enc(M.key)}&file=${enc(m.file)}" alt="" data-seed="${esc(m.name)}">`
       : m.icon_url ? `<img src="${esc(m.icon_url)}" alt="" loading="lazy" data-seed="${esc(m.name)}">` : art(m.name);
-    return `<div class="row ${m.enabled ? '' : 'off'}"><div class="row-ico">${icon}</div>
+    return `<div class="row mod-row ${m.enabled ? '' : 'off'}" data-act="mod-open" data-file="${esc(m.file)}" tabindex="0" role="link" aria-label="Открыть ${esc(m.name)}"><div class="row-ico">${icon}</div>
       <div class="row-main"><b>${esc(m.name)}${m.version ? `<span class="ver">${esc(m.version)}</span>` : ''}${upd.has(m.file) ? '<span class="upd">есть обновление</span>' : ''}</b><small>${esc(m.file)}${m.description ? ' — ' + esc(m.description) : ''}</small></div>
-      <button type="button" class="btn sm" data-act="mod-description" data-file="${esc(m.file)}">Описание</button>
       ${upd.has(m.file) ? `<button class="btn sm play" data-act="mod-update" data-file="${esc(m.file)}">Обновить</button>` : ''}
       ${M.local ? `<label class="sw" title="${m.enabled ? 'Выключить' : 'Включить'}"><input type="checkbox" data-act="mod-toggle" data-file="${esc(m.file)}" ${m.enabled ? 'checked' : ''}><i></i></label>
       <button class="btn ghost sq" data-act="mod-delete" data-file="${esc(m.file)}" title="Удалить">${ic('trash')}</button>` : ''}</div>`;
   }).join('');
-}
-
-async function showInstalledModDescription(m) {
-  const local = m.description ? `<div class="md"><p style="white-space:pre-wrap">${esc(m.description)}</p></div>` : '<p class="hint">В файле мода нет описания.</p>';
-  const id = String(m.project_id || '');
-  const source = id.startsWith('cf:') ? 'curseforge' : 'modrinth';
-  const known = source === 'curseforge' ? /^cf:\d+$/.test(id) : /^[a-zA-Z0-9_-]+$/.test(id);
-  const dialog = modal({
-    title: m.name || m.file, wide: true,
-    body: `<div id="installed-mod-description">${known ? '<p class="hint"><span class="spin"></span> Загружаю описание…</p>' : local}</div>`
-      + (!known ? '<p class="hint">Полная страница каталога недоступна: источник этого файла неизвестен.</p>' : ''),
-    foot: '<button class="btn" data-act="modal-close">Закрыть</button>'
-  });
-  if (!known) return;
-  try {
-    const p = await api(source + '.project', { id });
-    if (!dialog.isConnected) return;
-    const content = p.body_html ? htmlSafe(p.body_html) : mdHtml(p.body);
-    $('#installed-mod-description', dialog).innerHTML = content ? `<div class="md">${content}</div>` : local;
-  } catch (e) {
-    if (!dialog.isConnected) return;
-    $('#installed-mod-description', dialog).innerHTML = `<p class="hint">Не удалось загрузить описание из каталога: ${esc(e.message)}</p>` + local;
-  }
 }
 
 /* ---- миры ---- */
@@ -959,13 +935,33 @@ let _tagRu;
 const tagName = c => (_tagRu ||= Object.fromEntries(Object.values(BR_TAGS).flat()))[c] || c;
 const fmtDate = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('ru-RU', { year: 'numeric', month: 'short', day: 'numeric' }); };
 const SIDE = { required: 'нужен', optional: 'по желанию', unsupported: 'не нужен', unknown: '—' };
+function openInstalledMod(m) {
+  const M = S.mods, it = M && getItem(M.key);
+  if (!M || !it || !$('#br-detail')) return;
+  const id = String(m.project_id || '');
+  const source = id.startsWith('cf:') ? 'curseforge' : 'modrinth';
+  const known = source === 'curseforge' ? /^cf:\d+$/.test(id) : /^[a-zA-Z0-9_-]+$/.test(id);
+  const icon = m.icon ? 'api/modicon?key=' + enc(M.key) + '&file=' + enc(m.file) : (m.icon_url || '');
+  const h = { project_id: known ? id : m.file, title: m.name, description: m.description || '', icon_url: icon, downloads: 0, author: '', categories: [] };
+  S.br = {
+    ctx: M.key, it, src: source, type: 'mod', mc: it.mc_version || '', loader: it.loader?.type || '',
+    installed: new Set([h.project_id]), busy: new Set(), hits: [h], localOnly: !known,
+    localDescription: m.description || ''
+  };
+  openProject(h);
+}
 async function openProject(h) {
   const B = S.br, D = B.detail = { h, tab: 'desc', p: null, v: null, err: '', verr: '' };
   try { history.pushState({ brDetail: 1 }, ''); D.pushed = true; } catch { }
   drawDetail();
   $('#br-detail')?.scrollIntoView?.({ block: 'start' });
-  try { const p = await api(B.src + '.project', { id: h.project_id }); if (B.detail !== D) return; D.p = p; }
-  catch (e) { if (B.detail !== D) return; D.err = e.message; }
+  if (B.localOnly) {
+    D.p = { description: h.description, body: B.localDescription || 'В файле мода нет описания.',
+      gallery: [], categories: [], loaders: [], game_versions: [], links: {}, project_type: 'mod' };
+  } else {
+    try { const p = await api(B.src + '.project', { id: h.project_id }); if (S.br !== B || B.detail !== D) return; D.p = p; }
+    catch (e) { if (S.br !== B || B.detail !== D) return; D.err = e.message; }
+  }
   drawDetail();
 }
 async function loadVersions() {
@@ -982,12 +978,12 @@ function drawDetail() {
   const h = D.h, p = D.p, id = h.project_id;
   const done = B.installed.has(id), busy = B.busy.has(id);
   const label = B.type === 'modpack' ? 'Создать сборку' : B.ctx ? 'Установить' : 'Установить…';
-  const siteUrl = B.src === 'curseforge' ? (h.site_url || (p && p.site_url) || '') : 'https://modrinth.com/project/' + id;
+  const siteUrl = B.localOnly ? '' : B.src === 'curseforge' ? (h.site_url || (p && p.site_url) || '') : 'https://modrinth.com/project/' + id;
   const btn = h.blocked ? `<button class="btn" data-act="open-url" data-url="${esc(h.site_url)}" title="Автор запретил установку из сторонних лаунчеров">${ic('link', 16)} Скачать на сайте</button>` : busy ? '<button class="btn primary" disabled><span class="spin"></span> Ставлю…</button>'
     : done ? `<button class="btn" disabled>${ic('check', 16)} Установлено</button>`
       : `<button class="btn primary" data-act="br-install" data-pid="${esc(id)}">${ic('download', 16)} ${label}</button>`;
   const chips = ((p && p.categories) || h.categories || []).map(c => `<span class="chip">${esc(tagName(c))}</span>`).join('');
-  const tabs = [['desc', 'Описание']].concat(p && p.gallery.length ? [['gallery', `Галерея (${p.gallery.length})`]] : [], [['versions', 'Версии']]);
+  const tabs = [['desc', 'Описание']].concat(p && p.gallery.length ? [['gallery', `Галерея (${p.gallery.length})`]] : [], B.localOnly ? [] : [['versions', 'Версии']]);
   const spin = '<div class="empty"><span class="spin"></span></div>';
   let body = '';
   if (D.tab === 'desc') {
@@ -997,7 +993,7 @@ function drawDetail() {
       const link = (u, t) => u ? `<button class="btn sm" data-act="open-link" data-url="${esc(u)}">${ic('link', 13)} ${t}</button>` : '';
       const links = [link(p.links.source, 'Исходный код'), link(p.links.issues, 'Ошибки'), link(p.links.wiki, 'Вики'), link(p.links.discord, 'Discord')].join('');
       const gv = p.game_versions.slice(-8).reverse();
-      body = `<div class="proj-cols"><div class="md panel">${(p.body_html ? htmlSafe(p.body_html) : mdHtml(p.body)) || '<p class="hint">У проекта нет описания.</p>'}</div>
+      body = `<div class="proj-cols"><div class="md panel">${B.localOnly ? '<p class="hint">Источник файла неизвестен, поэтому галерея и версии из каталога недоступны.</p>' : ''}${(p.body_html ? htmlSafe(p.body_html) : mdHtml(p.body)) || '<p class="hint">У проекта нет описания.</p>'}</div>
         <aside class="proj-side">
           <div class="panel"><h4>Совместимость</h4>${p.loaders.length ? `<div class="chips">${p.loaders.map(l => `<span class="chip">${esc(LOADER_NAMES[l] || l)}</span>`).join('')}</div>` : ''}${gv.length ? `<div class="chips" style="margin-top:8px">${gv.map(v => `<span class="chip">${esc(v)}</span>`).join('')}</div>` : ''}
             ${p.project_type === 'mod' && p.client_side ? `<p class="hint" style="margin-top:10px">Клиент: ${SIDE[p.client_side] || '—'}<br>Сервер: ${SIDE[p.server_side] || '—'}</p>` : ''}</div>
@@ -1023,7 +1019,7 @@ function drawDetail() {
   box.innerHTML = `<button class="btn ghost sm" data-act="br-back">${ic('back', 14)} Назад к списку</button>
     <div class="proj-head"><div class="proj-icon">${h.icon_url ? `<img src="${esc(h.icon_url)}" alt="">` : art(id)}</div>
       <div class="proj-info"><h2>${esc(h.title)}<span class="by">${esc(h.author)}</span></h2><p>${esc((p && p.description) || h.description)}</p>
-        <div class="proj-stats"><span>${ic('download', 14)} ${esc(fmtNum((p && p.downloads) || h.downloads))} скачиваний</span>${p ? `<span>${ic('heart', 14)} ${esc(fmtNum(p.followers))} подписчиков</span>` : ''}</div>
+        <div class="proj-stats">${B.localOnly ? '' : `<span>${ic('download', 14)} ${esc(fmtNum((p && p.downloads) || h.downloads))} скачиваний</span>${p ? `<span>${ic('heart', 14)} ${esc(fmtNum(p.followers))} подписчиков</span>` : ''}`}</div>
         <div class="chips">${chips}</div></div>
       <div class="proj-act">${btn}${siteUrl ? `<button class="btn ghost sm" data-act="open-url" data-url="${esc(siteUrl)}">${ic('link', 13)} На сайте</button>` : ''}</div></div>
     <div class="seg proj-tabs">${tabs.map(([k, t]) => `<button data-act="br-tab" data-t="${k}" class="${D.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
@@ -1743,7 +1739,7 @@ const A = {
   'ms-code': () => msLogin(true),
   'ms-cancel': () => { api('accounts.ms_cancel').catch(() => { }); closeModal(); },
   /* моды */
-  'mod-description': el => { const m = S.mods?.mods.find(x => x.file === el.dataset.file); if (m) showInstalledModDescription(m); },
+  'mod-open': el => { const m = S.mods?.mods.find(x => x.file === el.dataset.file); if (m) openInstalledMod(m); },
   'mods-add': () => { const f = $('#file-mod'); f.onchange = () => uploadFiles([...f.files], 'mods'); f.click(); },
   'mod-toggle': async el => { try { await api('mods.toggle', { key: S.mods.key, file: el.dataset.file }); S.mods = { ...(await api('mods.list', { key: S.mods.key })), key: S.mods.key, local: true }; } catch (e) { toast(e.message, 'error'); } drawMods(); },
   'mod-delete': async el => {
@@ -1864,6 +1860,7 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
   if (!e.target.closest('#br-lim') && $('#br-lim .vsel-menu')) drawLimit(false);
   if (!el) { if (!e.target.closest('.pop')) closePop(); return; }
+  if (el.dataset.act === 'mod-open' && e.target.closest('button, input, label, select, a')) return;
   const fn = A[el.dataset.act];
   if (!fn) return;
   if (el.tagName === 'A') e.preventDefault();
