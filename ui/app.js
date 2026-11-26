@@ -673,19 +673,22 @@ function versionPicker(root, init) {
   root.innerHTML = `<label class="fld"><span>Версия Minecraft</span><select id="vp-mc"><option>Загружаю…</option></select><input type="text" id="vp-mc-m" placeholder="Например, 1.20.1" hidden><small id="vp-mc-hint"></small></label>
     <label class="chk"><input type="checkbox" id="vp-snap"> Показывать снапшоты</label>
     <div class="fld"><span>Загрузчик модов</span><div class="seg" id="vp-ld">${['vanilla', 'fabric', 'quilt', 'forge', 'neoforge'].map(k => `<button type="button" data-ld="${k}" class="${k === st.type ? 'on' : ''}">${LOADER_NAMES[k]}</button>`).join('')}</div></div>
-    <label class="fld" id="vp-lv-wrap"><span>Версия загрузчика</span><select id="vp-lv"></select><input type="text" id="vp-lv-m" placeholder="Введи версию вручную" hidden><small id="vp-hint"></small></label>`;
+    <label class="fld" id="vp-lv-wrap"><span>Версия загрузчика</span><select id="vp-lv"></select><input type="text" id="vp-lv-m" placeholder="Введи версию вручную" hidden><small id="vp-hint"></small><button type="button" class="btn sm" id="vp-retry" hidden>Попробовать снова</button></label>`;
   const mcSel = $('#vp-mc', root), mcMan = $('#vp-mc-m', root), mcHint = $('#vp-mc-hint', root);
-  const lvSel = $('#vp-lv', root), man = $('#vp-lv-m', root), hint = $('#vp-hint', root);
+  const lvSel = $('#vp-lv', root), man = $('#vp-lv-m', root), hint = $('#vp-hint', root), retry = $('#vp-retry', root);
   let seq = 0;
   async function loadLV() {
     const my = ++seq;
-    man.hidden = true; lvSel.hidden = false; hint.textContent = ''; hint.className = '';
+    man.hidden = true; lvSel.hidden = false; retry.hidden = true; hint.textContent = ''; hint.className = '';
     $('#vp-lv-wrap', root).hidden = st.type === 'vanilla';
     if (st.type === 'vanilla') { st.lv = ''; return; }
     if (!st.mc) { st.lv = ''; lvSel.innerHTML = '<option value="">Сначала укажи версию Minecraft</option>'; lvSel.disabled = true; return; }
     lvSel.innerHTML = '<option>Загружаю…</option>'; lvSel.disabled = true;
     try {
-      const d = await api('meta.loader_versions', { kind: st.type, mc: st.mc });
+      const d = await Promise.race([
+        api('meta.loader_versions', { kind: st.type, mc: st.mc }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Сервер версий не ответил. Проверь интернет и попробуй снова.')), 30000))
+      ]);
       if (my !== seq) return;
       const auto = st.type === 'fabric' || st.type === 'quilt';
       const list = d.versions;
@@ -696,7 +699,7 @@ function versionPicker(root, init) {
     } catch (e) {
       if (my !== seq) return;
       lvSel.hidden = true; man.hidden = false; man.value = st.lv; st.manual = true;
-      hint.textContent = e.message; hint.className = 'err-text';
+      hint.textContent = e.message; hint.className = 'err-text'; retry.hidden = false;
     }
   }
   async function loadMC() {
@@ -713,6 +716,7 @@ function versionPicker(root, init) {
     }
     loadLV();
   }
+  retry.onclick = () => loadLV();
   mcSel.onchange = () => { st.mc = mcSel.value; loadLV(); };
   mcMan.oninput = debounce(() => { st.mc = mcMan.value.trim(); loadLV(); }, 500);
   lvSel.onchange = () => { st.lv = lvSel.value; };

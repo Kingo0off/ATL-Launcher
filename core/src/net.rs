@@ -32,6 +32,7 @@ pub struct Endpoints {
     pub quilt: String,
     pub forge_meta: String,
     pub neoforge_meta: String,
+    pub neoforge_prism: String,
     pub java_all: String,
     pub authlib: String,
     pub forge_maven: String,
@@ -60,6 +61,7 @@ impl Default for Endpoints {
             quilt: "https://meta.quiltmc.org/v3".into(),
             forge_meta: "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml".into(),
             neoforge_meta: "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml".into(),
+            neoforge_prism: "https://raw.githubusercontent.com/PrismLauncher/meta-launcher/master/net.neoforged/index.json".into(),
             java_all: "https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json".into(),
             authlib: "https://authlib-injector.yushi.moe/artifact/latest.json".into(),
             forge_maven: "https://maven.minecraftforge.net/net/minecraftforge/forge".into(),
@@ -153,6 +155,14 @@ fn fetch(url: &str) -> Result<ureq::Response, NetError> {
         Err(ureq::Error::Status(code, _)) => Err(NetError(format!("{} → HTTP {}", url, code))),
         Err(ureq::Error::Transport(t)) => Err(transport_err(url, t)),
     }
+}
+
+/// Ограниченное по времени получение метаданных загрузчика.
+pub fn loader_metadata(url: &str) -> Result<String, NetError> {
+    let agent = ureq::AgentBuilder::new().user_agent(UA).timeout(Duration::from_secs(12)).build();
+    let response = agent.get(url).call().map_err(|e| NetError(format!("Не удалось загрузить список версий: {}", e)))?;
+    let raw = read_all(response, 8 << 20)?;
+    String::from_utf8(raw).map_err(|e| NetError(format!("Некорректный ответ сервера: {}", e)))
 }
 
 pub fn get_json(url: &str) -> Result<Value, NetError> {

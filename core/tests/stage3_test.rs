@@ -52,6 +52,7 @@ fn version_lists() {
         fabric: format!("{}/fabric", base),
         forge_meta: format!("{}/forge.xml", base),
         neoforge_meta: format!("{}/neo.xml", base),
+        neoforge_prism: format!("{}/missing-prism", base),
         neoforge_legacy_meta: format!("{}/neo_legacy.xml", base),
         ..Endpoints::default()
     };
@@ -173,4 +174,21 @@ fn inherits_and_args() {
     assert!(jvm.contains(&"-cp".to_string()) && jvm.contains(&"-Djava.library.path=/n".to_string()));
     assert!(m.load_version("../evil").is_err());
     assert_eq!(mojang::maven_path("net.fabricmc:fabric-loader:0.14.9"), "net/fabricmc/fabric-loader/0.14.9/fabric-loader-0.14.9.jar");
+}
+
+#[test]
+fn neoforge_prism_versions_and_fallback() {
+    let prism = json!({"versions":[
+        {"version":"21.1.4-beta","requires":[{"uid":"net.minecraft","equals":"1.21.1"}]},
+        {"version":"21.1.3","requires":[{"uid":"net.minecraft","equals":"1.21.1"}]},
+        {"version":"21.0.8","requires":[{"uid":"net.minecraft","equals":"1.21"}]},
+        {"version":"47.1.106","requires":[{"uid":"net.minecraft","equals":"1.20.1"}]}
+    ]});
+    assert_eq!(loaders::prism_neoforge_versions(&prism, "1.21.1"), vec!["21.1.3", "21.1.4-beta"]);
+    assert_eq!(loaders::prism_neoforge_versions(&prism, "1.20.1"), vec!["47.1.106"]);
+    let mut files = HashMap::new();
+    files.insert("/prism".into(), prism.to_string().into_bytes());
+    let base = mock(files);
+    let ep = Endpoints { neoforge_prism: format!("{}/prism", base), neoforge_meta: format!("{}/missing", base), ..Endpoints::default() };
+    assert_eq!(loaders::loader_versions(&ep, "neoforge", "1.21.1").unwrap(), vec!["21.1.3", "21.1.4-beta"]);
 }

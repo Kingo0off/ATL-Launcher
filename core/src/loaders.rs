@@ -1,5 +1,5 @@
 //! Списки версий загрузчиков: Fabric, Quilt (meta API), Forge и NeoForge (maven-metadata.xml).
-use crate::net::{get_json, get_text, Endpoints, NetError};
+use crate::net::{get_json, get_text, loader_metadata, Endpoints, NetError};
 
 pub fn xml_versions(xml: &str) -> Vec<String> {
     let mut out = Vec::new();
@@ -68,6 +68,16 @@ pub fn filter_neoforge(versions: &[String], mc: &str) -> Vec<String> {
     stable.into_iter().chain(beta).collect()
 }
 
+/// Список Prism содержит точную версию Minecraft для каждого релиза.
+pub fn prism_neoforge_versions(data: &serde_json::Value, mc: &str) -> Vec<String> {
+    let found: Vec<String> = data["versions"].as_array().map(|versions| versions.iter()
+        .filter(|v| v["requires"].as_array().map(|a| a.iter().any(|r| r["uid"] == "net.minecraft" && r["equals"] == mc)).unwrap_or(false))
+        .filter_map(|v| v["version"].as_str().filter(|s| !s.is_empty()).map(String::from))
+        .collect()).unwrap_or_default();
+    let (pre, stable): (Vec<String>, Vec<String>) = found.into_iter().partition(|v| v.contains("beta") || v.contains("alpha"));
+    stable.into_iter().chain(pre).collect()
+}
+
 /// Версии загрузчика для данной версии Minecraft, свежие первыми.
 pub fn loader_versions(ep: &Endpoints, kind: &str, mc: &str) -> Result<Vec<String>, NetError> {
     match kind {
@@ -84,8 +94,18 @@ pub fn loader_versions(ep: &Endpoints, kind: &str, mc: &str) -> Result<Vec<Strin
             Ok(stable.into_iter().chain(pre).collect())
         }
         "forge" => Ok(filter_forge(&xml_versions(&get_text(&ep.forge_meta)?), mc)),
-        "neoforge" if neoforge_is_legacy(mc) => Ok(filter_forge(&xml_versions(&get_text(&ep.neoforge_legacy_meta)?), mc)),
-        "neoforge" => Ok(filter_neoforge(&xml_versions(&get_text(&ep.neoforge_meta)?), mc)),
+        "neoforge" => {
+            // Отдельный источник помогает, если сервер Maven NeoForge недоступен.
+            if let Ok(raw) = loader_metadata(&ep.neoforge_prism) {
+                if let Ok(data) = serde_json::from_str::<serde_json::Value>(&raw) {
+                    let versions = prism_neoforge_versions(&data, mc);
+                    if !versions.is_empty() { return Ok(versions); }
+                }
+            }
+            let meta = if neoforge_is_legacy(mc) { &ep.neoforge_legacy_meta } else { &ep.neoforge_meta };
+            let versions = xml_versions(&loader_metadata(meta)?);
+            Ok(if neoforge_is_legacy(mc) { filter_forge(&versions, mc) } else { filter_neoforge(&versions, mc) })
+        },
         other => Err(NetError(format!("Неизвестный загрузчик {}", other))),
     }
 }
